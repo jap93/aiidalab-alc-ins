@@ -7,8 +7,8 @@ from ipywidgets import dlink
 from pathlib import Path
 from aiida_mlip.data.model import ModelData
 from aiida.orm import StructureData
-from aiida.orm import load_code
-from aiida.orm import Str, Float, Bool, Int
+from aiida.orm import load_code, load_node
+from aiida.orm import Str, Float, Bool, Int, BandsData, KpointsData
 from aiida.plugins import CalculationFactory
 from aiida_workgraph import WorkGraph
 
@@ -104,6 +104,10 @@ class MLIPProcess:
 
     def submit_process(self):
         """Submit the AiiDA process."""
+
+
+        """
+
         code = load_code(self.model.resource_model.code_name)
         print("code", code)
         device = self.model.resource_model.device_name
@@ -152,6 +156,25 @@ class MLIPProcess:
         
             geomoptCalc = CalculationFactory("mlip.sp")
 
+        #input for phonon
+        inputs_phon = {
+        "metadata": {"options": {"resources": {"num_machines": 1}}},
+        "code": code,
+        "model": mlip_model,
+        "device": Str(device),
+        "supercell": Str("2 2 2"),
+        "minimize": Bool(False),
+        "fmax": Float(0.1),
+        "displacement": Float(0.01),
+        "nqpoints": Int(51),
+        "dos": Bool(False),
+        "pdos": Bool(False),
+        "bands": Bool(False),
+        "no_hdf5": Bool(False),
+        "symmetrize": Bool(False),
+        }
+        phononCalc = CalculationFactory("mlip.ph")
+
         wg = WorkGraph("GeomOptPhonGraph")
 
         wg.add_task(
@@ -160,10 +183,22 @@ class MLIPProcess:
             **inputs_geom
         )
 
+        opt_struct = wg.tasks.geomopt_calc.outputs.xyz_output
+
+        phonon_calc = wg.add_task(
+            phononCalc,
+            name="ph_calc",
+            struct = opt_struct,
+            **inputs_phon,
+        )
+
         wg.outputs.results = wg.tasks.geomopt_calc.outputs.results_dict
+        print("outputs", wg.outputs)
+        print("geomopt calc outputs", wg.tasks.geomopt_calc.outputs)
+        #print("results", wg.geomopt_calc.outputs) #.results.value.get_dict())
         wg.outputs.results_file = wg.tasks.geomopt_calc.outputs.xyz_output
 
-        wg.tasks.geomopt_calc
+        #wg.tasks.geomopt_calc
 
         wg.run()
 
@@ -187,14 +222,163 @@ class MLIPProcess:
         if hasattr(wg.process, "exit_message"):
             print(f"WorkGraph exit message: {wg.process.exit_message}")
 
+        print("results for phonons1", wg.tasks.phonon_calc.outputs)
+        print("results for phonons2", wg.tasks.phonon_calc.outputs.results_dict.value.get_dict())
         # Map outputs to the WorkGraph
         #wg.outputs.results = wg.tasks.geomopt_calc.outputs.results_dict
         #print("results", wg.outputs.results)
 
         #self.node = wg.nodes[0]
         #print(f"WorkGraph complete: {self.node.uuid}")
+        """
+
+        # Load profile
+        #load_profile()
+
+        #create the initial structure 
+        from ase.build import bulk
+        structure = StructureData(ase=bulk("NaCl", "rocksalt", 5.63))
+
+        #MACE model to be used
+        model = ModelData.from_local("mace_mp_small.model", architecture="mace")
+
+        #code being used in both instances is janus-core
+        code = load_code("janus@localhost")
+
+
+        #inpits for the geometry optimisation
+        inputs_geom = {
+        "code": code,
+        "model": model,
+        "struct": structure,
+        "arch": Str(model.architecture),
+        "device": Str("cpu"),
+        "fmax": Float(0.1), 
+        "opt_cell_lengths": Bool(True), 
+        "opt_cell_fully": Bool(True), 
+        "metadata": {"options": {"resources": {"num_machines": 1}}},
+
+
+    }
+
+        inputs_phon = {
+        "metadata": {"options": {"resources": {"num_machines": 1}}},
+        "code": code,
+        "arch": model.architecture,
+        "model": model,
+        "device": Str("cpu"),
+        "supercell": Str("2 2 2"),
+        #"minimize": Bool(False),
+        #"fmax": Float(0.1),
+        "displacement": Float(0.01),
+        "nqpoints": Int(51),
+        "dos": Bool(True),
+        "pdos": Bool(False),
+        "bands": Bool(True),
+        "no_hdf5": Bool(False),
+        "symmetrize": Bool(False),
+        }
+
+        geomoptCalc = CalculationFactory("mlip.opt")
+        phononCalc = CalculationFactory("mlip.ph")
+
+
+        
+        wg = WorkGraph("GeomOptGraph")
+
+        gm_calc = wg.add_task(
+        geomoptCalc,
+        name="geomopt_calc",
+        **inputs_geom
+       )
+
+        opt_struct = gm_calc.outputs.final_structure
+
+        phononCalc = CalculationFactory("mlip.ph")
+
+        ph_calc = wg.add_task(
+        phononCalc,
+        name="ph_calc",
+        struct = opt_struct,
+        **inputs_phon,
+       )
+
+
+
+        wg.outputs.results = wg.tasks.geomopt_calc.outputs.results_dict
+        wg.outputs.results_file = wg.tasks.geomopt_calc.outputs.xyz_output
+
+
+
+#wg.tasks.geomopt_calc
+
+        wg.run()
+
+        print(type(wg.outputs.results_file.value))
+
+        #print("results for geom opt", wg.outputs.results.value.get_dict())
+
+        #print("results for phonons", wg.tasks.ph_calc.outputs.results_dict.value.get_dict())
+
+        self.node = wg.nodes[0]
+        print("nodes", wg.nodes, len(wg.nodes))
+        #print("node 1 ", wg.nodes[0])
+        #print("node 2 ", wg.nodes[1])
+        #print("node 3 ", wg.nodes[2])
+        #print("node 4 ", wg.nodes[3])
+        #print("node 5 ", wg.nodes[4])
+        #print("node 5 outputs", wg.nodes[4].outputs.results_dict.value.get_dict())
+        #print("node 5 outputs dos", wg.nodes[4].outputs['dos'].value.get_content())
+        
+        import shutil
+        with wg.nodes[4].outputs['band_structure'].value.open(mode='rb') as source:
+            with open('bands.yml.xz', mode='wb') as target:
+                shutil.copyfileobj(source, target)
+        
+        import lzma
+        import yaml
+        with lzma.open('bands.yml.xz', mode="rt", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+
+        #print("phonon band structure data", data)
+        print("current dir", Path.cwd())
+        print(f"WorkGraph complete: {self.node.uuid}")
+
+        print(type(opt_struct))
+        print(opt_struct)
+        self.model.results_model.final_structure = StructureData(ase=self.dict_to_ase_atoms(wg.outputs.results.value.get_dict()))
+        self.model.results_model.phonon_band_structure = self._clean_band_structure_data(data)
+        self.model.results_model.phonon_dos = wg.tasks.ph_calc.outputs.dos.value.get_content()
+
+
+        print("bands_data", self.model.results_model.phonon_band_structure, type(self.model.results_model.phonon_band_structure))
+        print("dos", self.model.results_model.phonon_dos, type(self.model.results_model.phonon_dos))
         return
     
+    def _clean_band_structure_data(self, data) -> BandsData:
+        
+
+        frequencies = []
+        kpoints = []
+
+        for segment in data['phonon']:
+            for qpt in segment['q-position']:
+                kpoints.append(qpt)
+            band_freqs = [band['frequency'] for band in segment['band']]
+            frequencies.append(band_freqs)
+
+        kpoints = np.array(kpoints)
+        kpoints = np.reshape(kpoints, (-1, 3))  # Ensure shape is (n_kpoints, 3)
+        frequencies = np.array(frequencies)
+
+        kpoints_data = KpointsData()
+        kpoints_data.set_kpoints(kpoints)
+
+        bands_data = BandsData()
+        bands_data.set_kpointsdata(kpoints_data)
+        bands_data.set_bands(frequencies)
+
+        return bands_data
     
 
 

@@ -5,6 +5,7 @@
 *.swp
 *.xml
 *.json
+*.xz
 ~*
 *~
 .project
@@ -17,5 +18,7 @@
 build/
 dist/
 work/
+work/phonon/
+aiida-mlip-phonon/
 pip-wheel-metadata/
 .tox/

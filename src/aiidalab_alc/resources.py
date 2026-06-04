@@ -183,7 +183,7 @@ class ResourceSetupBox(ipw.VBox):
         self.label = ipw.Text(
             value=self.model.process_label,
             placeholder="Enter process label",
-            description="Label:",
+            description="Process Label:",
             disabled=False,
             layout=ipw.Layout(width="80%"),
         )

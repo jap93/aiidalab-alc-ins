@@ -126,7 +126,7 @@ class MLIPOptionsWidget(ipw.VBox):
         self.rendered = False
 
         self.calculation_dropdown = ipw.Dropdown(
-            options=["Geometry optimisation", "Single point"],
+            options=["Single point", "Geometry optimisation"],
             description="Calculation:",
             disabled=False,
             layout={"width": "50%"},
@@ -202,7 +202,6 @@ class MLIPOptionsWidget(ipw.VBox):
     #    return
 
     def _update_optimisation(self, _) -> None:
-        print("optim",self.calculation_dropdown.value.lower())
         if self.calculation_dropdown.value.lower() == "geometry optimisation":
             self.optimisation_dropdown.disabled = False
             self.pressure_text.disabled = False
