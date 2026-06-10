@@ -147,7 +147,6 @@ class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
 
     def _get_ase_object_from_file(self, fname: str, content: bytes) -> ase.Atoms | None:
         suffix = "".join(Path(fname).suffixes)
-        print("_get_ase_object_from_file", suffix, "fname", fname)
         with NamedTemporaryFile(suffix=suffix) as tmpf:
             tmpf.write(content)
             tmpf.flush()
@@ -169,7 +168,6 @@ class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             self.submit_btn.disabled = True
             self.submit_btn.description = "Submitted"
             self.model.submitted = True
-            print("submitted",self.model.structure_file, self.model.structure)
         else:
             self.model.submitted = False
         return

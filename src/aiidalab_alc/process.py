@@ -1,4 +1,8 @@
 """Module for handling AiiDA processes."""
+import io
+import lzma
+import yaml
+import shutil
 
 import traitlets as tl
 from aiida.engine import submit
@@ -48,7 +52,6 @@ class MainAppModel(tl.HasTraits):
             self.block_results = False
 
             self.results_model.process_uuid = self.process.node.uuid
-            print("_submit_model: process node ", self.process.node.uuid, "results model process uuid", self.results_model.process_uuid)
             
         else:
             print("ERROR: Input Validation Failed")
@@ -105,27 +108,23 @@ class MLIPProcess:
     def submit_process(self):
         """Submit the AiiDA process."""
 
-
-        """
-
+        structure = self.model.structure_model.structure
         code = load_code(self.model.resource_model.code_name)
-        print("code", code)
-        device = self.model.resource_model.device_name
-        print("device", device)        
-        structure = StructureData(ase=self.model.structure_model.structure.get_ase())
-        
-        print("structure", structure)
+
+        device = self.model.resource_model.device_name   
+
         model_file = self.model.workflow_model.force_field
         if not Path(model_file).exists():
             print("model file does not exist", model_file)
-        print("model file", model_file)
+
         architecture = self.model.workflow_model.architecture
         mlip_model = ModelData.from_local(model_file, architecture=architecture)
 
         calculation_style = self.model.workflow_model.calc_style.lower()
         optimisation = self.model.workflow_model.optimisation.lower()
-        print("calc_style", calculation_style, "optimisation", optimisation)
-        
+
+        dftd3 = self.model.workflow_model.use_dftd3
+
         if calculation_style == "geometry optimisation":
             inputs_geom = {
                 "code": code,
@@ -141,8 +140,9 @@ class MLIPProcess:
             else:
                 inputs_geom["opt_cell_fully"] = Bool(True)
 
-            print("inputs",inputs_geom)
-        
+            if dftd3:
+                inputs_geom["calc_kwargs"] = Dict({"dispersion": True})
+
             geomoptCalc = CalculationFactory("mlip.opt")
 
         else: # must be single point
@@ -150,130 +150,27 @@ class MLIPProcess:
                 "code": code,
                 "model": mlip_model,
                 "struct": structure,
-                "device": Str("cpu"),
+                "device": Str(device),
                 "metadata": {"options": {"resources": {"num_machines": 1}}},
             }
         
+            if dftd3:
+                inputs_geom["calc_kwargs"] = Dict({"dispersion": True})
+
             geomoptCalc = CalculationFactory("mlip.sp")
 
-        #input for phonon
+        supercell = str(self.model.workflow_model.supercell_size_x) + " " + str(self.model.workflow_model.supercell_size_y) + " " + str(self.model.workflow_model.supercell_size_z)
+
         inputs_phon = {
         "metadata": {"options": {"resources": {"num_machines": 1}}},
         "code": code,
         "model": mlip_model,
         "device": Str(device),
-        "supercell": Str("2 2 2"),
-        "minimize": Bool(False),
-        "fmax": Float(0.1),
-        "displacement": Float(0.01),
-        "nqpoints": Int(51),
-        "dos": Bool(False),
-        "pdos": Bool(False),
-        "bands": Bool(False),
-        "no_hdf5": Bool(False),
-        "symmetrize": Bool(False),
-        }
-        phononCalc = CalculationFactory("mlip.ph")
-
-        wg = WorkGraph("GeomOptPhonGraph")
-
-        wg.add_task(
-            geomoptCalc,
-            name="geomopt_calc",
-            **inputs_geom
-        )
-
-        opt_struct = wg.tasks.geomopt_calc.outputs.xyz_output
-
-        phonon_calc = wg.add_task(
-            phononCalc,
-            name="ph_calc",
-            struct = opt_struct,
-            **inputs_phon,
-        )
-
-        wg.outputs.results = wg.tasks.geomopt_calc.outputs.results_dict
-        print("outputs", wg.outputs)
-        print("geomopt calc outputs", wg.tasks.geomopt_calc.outputs)
-        #print("results", wg.geomopt_calc.outputs) #.results.value.get_dict())
-        wg.outputs.results_file = wg.tasks.geomopt_calc.outputs.xyz_output
-
-        #wg.tasks.geomopt_calc
-
-        wg.run()
-
-        type(wg.outputs.results_file.value)
-
-        print("outputs", wg.outputs)
-
-        print("results", wg.outputs.results.value.get_dict())
-        self.model.results_model.final_structure = StructureData(ase=self.dict_to_ase_atoms(wg.outputs.results.value.get_dict()))
-        print("results_file", wg.outputs.results_file.value)
-        self.node = wg.outputs.results_file.value
-
-
-        if wg.process.is_failed:
-            print("WorkGraph failed")
-
-        if wg.process.exit_status != 0:
-            print(f"Failed with exit status {wg.process.exit_status}")
-
-        # optional, if supported
-        if hasattr(wg.process, "exit_message"):
-            print(f"WorkGraph exit message: {wg.process.exit_message}")
-
-        print("results for phonons1", wg.tasks.phonon_calc.outputs)
-        print("results for phonons2", wg.tasks.phonon_calc.outputs.results_dict.value.get_dict())
-        # Map outputs to the WorkGraph
-        #wg.outputs.results = wg.tasks.geomopt_calc.outputs.results_dict
-        #print("results", wg.outputs.results)
-
-        #self.node = wg.nodes[0]
-        #print(f"WorkGraph complete: {self.node.uuid}")
-        """
-
-        # Load profile
-        #load_profile()
-
-        #create the initial structure 
-        from ase.build import bulk
-        structure = StructureData(ase=bulk("NaCl", "rocksalt", 5.63))
-
-        #MACE model to be used
-        model = ModelData.from_local("mace_mp_small.model", architecture="mace")
-
-        #code being used in both instances is janus-core
-        code = load_code("janus@localhost")
-
-
-        #inpits for the geometry optimisation
-        inputs_geom = {
-        "code": code,
-        "model": model,
-        "struct": structure,
-        "arch": Str(model.architecture),
-        "device": Str("cpu"),
-        "fmax": Float(0.1), 
-        "opt_cell_lengths": Bool(True), 
-        "opt_cell_fully": Bool(True), 
-        "metadata": {"options": {"resources": {"num_machines": 1}}},
-
-
-    }
-
-        inputs_phon = {
-        "metadata": {"options": {"resources": {"num_machines": 1}}},
-        "code": code,
-        "arch": model.architecture,
-        "model": model,
-        "device": Str("cpu"),
-        "supercell": Str("2 2 2"),
-        #"minimize": Bool(False),
-        #"fmax": Float(0.1),
+        "supercell": Str(supercell),
         "displacement": Float(0.01),
         "nqpoints": Int(51),
         "dos": Bool(True),
-        "pdos": Bool(False),
+        "pdos": Bool(True),
         "bands": Bool(True),
         "no_hdf5": Bool(False),
         "symmetrize": Bool(False),
@@ -303,69 +200,135 @@ class MLIPProcess:
         **inputs_phon,
        )
 
-
-
         wg.outputs.results = wg.tasks.geomopt_calc.outputs.results_dict
         wg.outputs.results_file = wg.tasks.geomopt_calc.outputs.xyz_output
 
-
-
-#wg.tasks.geomopt_calc
-
         wg.run()
 
-        print(type(wg.outputs.results_file.value))
+        if wg.process.is_failed:
+            print("WorkGraph failed")
 
-        #print("results for geom opt", wg.outputs.results.value.get_dict())
-
-        #print("results for phonons", wg.tasks.ph_calc.outputs.results_dict.value.get_dict())
+        if wg.process.exit_status != 0:
+            print(f"Failed with exit status {wg.process.exit_status}")
 
         self.node = wg.nodes[0]
-        print("nodes", wg.nodes, len(wg.nodes))
-        #print("node 1 ", wg.nodes[0])
-        #print("node 2 ", wg.nodes[1])
-        #print("node 3 ", wg.nodes[2])
-        #print("node 4 ", wg.nodes[3])
-        #print("node 5 ", wg.nodes[4])
-        #print("node 5 outputs", wg.nodes[4].outputs.results_dict.value.get_dict())
-        #print("node 5 outputs dos", wg.nodes[4].outputs['dos'].value.get_content())
         
-        import shutil
         with wg.nodes[4].outputs['band_structure'].value.open(mode='rb') as source:
             with open('bands.yml.xz', mode='wb') as target:
                 shutil.copyfileobj(source, target)
         
-        import lzma
-        import yaml
         with lzma.open('bands.yml.xz', mode="rt", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
-        #print("phonon band structure data", data)
-        print("current dir", Path.cwd())
-        print(f"WorkGraph complete: {self.node.uuid}")
-
-        print(type(opt_struct))
-        print(opt_struct)
         self.model.results_model.final_structure = StructureData(ase=self.dict_to_ase_atoms(wg.outputs.results.value.get_dict()))
         self.model.results_model.phonon_band_structure = self._clean_band_structure_data(data)
         self.model.results_model.phonon_dos = wg.tasks.ph_calc.outputs.dos.value.get_content()
-
-
-        print("bands_data", self.model.results_model.phonon_band_structure, type(self.model.results_model.phonon_band_structure))
-        print("dos", self.model.results_model.phonon_dos, type(self.model.results_model.phonon_dos))
+        self.model.results_model.phonon_pdos = wg.tasks.ph_calc.outputs.pdos.value.get_content()
         return
+    
+    def _phonopy_to_bandsplot(self, phonopy_data):
+        """Convert phonopy band structure data to a format suitable for the BandsPlotWidget."""
+        phonon_segments = phonopy_data.get(
+            "phonon",
+            phonopy_data.get("band_structure", phonopy_data.get("segments", [])),
+        )
+
+        kpoints = []
+        band_branches = []
+        segment_lengths = []
+        segment_labels = []
+
+        for segment in phonon_segments:
+            q_points = segment.get(
+                "q-position",
+                segment.get("q-point", segment.get("q-points", segment.get("qpoints", []))),
+            )
+            if isinstance(q_points, dict):
+                q_points = [q_points]
+
+            q_coords = []
+            for qpt in q_points:
+                if isinstance(qpt, dict):
+                    q_coords.append(
+                        qpt.get("coordinates")
+                        or qpt.get("q-position")
+                        or [v for v in qpt.values() if isinstance(v, (int, float))]
+                    )
+                else:
+                    q_coords.append(qpt)
+
+            q_coords = [list(map(float, coords)) for coords in q_coords]
+            kpoints.extend(q_coords)
+            segment_lengths.append(len(q_coords))
+
+            band_data = segment.get("band", segment.get("bands", []))
+            if isinstance(band_data, dict):
+                band_data = [band_data]
+
+            if band_data and isinstance(band_data[0], dict) and "frequency" in band_data[0]:
+                # Phonopy often stores one branch per segment as a list of dicts
+                branch = [float(entry["frequency"]) for entry in band_data]
+                band_branches.append(branch)
+            elif band_data and isinstance(band_data[0], (list, tuple, np.ndarray)):
+                band_branches.extend([list(map(float, branch)) for branch in band_data])
+            elif band_data:
+                band_branches.append([float(value) for value in band_data])
+
+            if "label" in segment:
+                segment_labels.append((len(kpoints) - len(q_coords), segment["label"]))
+
+        if not kpoints or not band_branches:
+            raise ValueError("No phonopy band structure data found in input")
+
+        kpoints = np.asarray(kpoints, dtype=float).reshape(-1, 3)
+        frequencies = np.asarray(band_branches, dtype=float)
+        if frequencies.ndim == 2 and frequencies.shape[0] == len(kpoints):
+            frequencies = frequencies.T
+
+        distances = np.concatenate(
+            ([0.0], np.linalg.norm(np.diff(kpoints, axis=0), axis=1).cumsum())
+        )
+
+        labels = []
+        if segment_labels:
+            for idx, label in segment_labels:
+                if idx < len(distances):
+                    labels.append([float(distances[idx]), label])
+        elif "labels" in phonopy_data and "segment_nqpoint" in phonopy_data:
+            offset = 0
+            for pair, nq in zip(phonopy_data["labels"], phonopy_data["segment_nqpoint"]):
+                labels.append([float(distances[offset]), pair[0]])
+                labels.append([float(distances[offset + nq - 1]), pair[1]])
+                offset += nq
+
+        return {
+            "bands": frequencies.T.tolist(),
+            "kpoints": distances.tolist(),
+            "labels": labels,
+        }
     
     def _clean_band_structure_data(self, data) -> BandsData:
         
 
         frequencies = []
         kpoints = []
+        labels = []
 
-        for segment in data['phonon']:
+        def clean_label(label: str) -> str:
+            """Remove LaTeX math mode delimiters and backslashes."""
+            if not label:
+                return label
+            return label.replace("$", "").replace("\\", "").replace("mathrm{", "").replace("}", "")
+
+        for i, segment in enumerate(data['phonon']):
             for qpt in segment['q-position']:
                 kpoints.append(qpt)
             band_freqs = [band['frequency'] for band in segment['band']]
             frequencies.append(band_freqs)
+
+            # Extract label if present for this specific q-point
+            if "label" in segment:
+                labels.append((i, clean_label(segment["label"])))
 
         kpoints = np.array(kpoints)
         kpoints = np.reshape(kpoints, (-1, 3))  # Ensure shape is (n_kpoints, 3)
@@ -374,14 +337,24 @@ class MLIPProcess:
         kpoints_data = KpointsData()
         kpoints_data.set_kpoints(kpoints)
 
+        # Handle top-level labels if no labels were found in the individual points (Phonopy format)
+        if not labels and "labels" in data and "segment_nqpoint" in data:
+            curr_idx = 0
+            for seg_labels, nq in zip(data["labels"], data["segment_nqpoint"]):
+                labels.append((curr_idx, clean_label(seg_labels[0])))
+                curr_idx += nq
+                labels.append((curr_idx - 1, clean_label(seg_labels[1])))
+            # Deduplicate labels at segment boundaries and sort by index
+            labels = sorted(list(set(labels)))
+
         bands_data = BandsData()
         bands_data.set_kpointsdata(kpoints_data)
         bands_data.set_bands(frequencies)
+        if labels:
+            bands_data.labels = labels
 
         return bands_data
     
-
-
     def dict_to_ase_atoms(self, data: dict) -> Atoms:
         atoms = Atoms(
             numbers=np.asarray(data["numbers"], dtype=int),

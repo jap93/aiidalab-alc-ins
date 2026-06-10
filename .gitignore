@@ -6,6 +6,7 @@
 *.xml
 *.json
 *.xz
+*.bak
 ~*
 *~
 .project

@@ -22,15 +22,12 @@ class MLIPWorkflowModel(tl.HasTraits):
 
     #phonon parameters
     auto_bands = tl.Bool(True).tag(sync=True)
-    supercell_size_x = tl.Int(1).tag(sync=True)
-    supercell_size_y = tl.Int(1).tag(sync=True) 
-    supercell_size_z = tl.Int(1).tag(sync=True)
+    supercell_size_x = tl.Int(2).tag(sync=True)
+    supercell_size_y = tl.Int(2).tag(sync=True) 
+    supercell_size_z = tl.Int(2).tag(sync=True)
     number_points = tl.Int(51).tag(sync=True)
 
-
-
     default_guide = ""
-
 
 class MethodWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     """Wizard setup for the calculation workflow."""
@@ -91,14 +88,27 @@ class MethodWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             layout={"margin": "auto", "width": "60%"},
         )
         self.submit_btn.on_click(self._submit)
-        self.children = [self.header, self.guide, self.tabs, self.submit_btn]
+
+        self.error_output = ipw.HTML(layout={"margin": "10px auto", "width": "60%"})
+
+        self.children = [
+            self.header,
+            self.guide,
+            self.tabs,
+            self.error_output,
+            self.submit_btn,
+        ]
         self.rendered = True
         return
 
     def _submit(self, _):
         """Store the MLIP parameters in the MLIP workflow model."""
+        self.error_output.value = ""
         if not self.model.force_field:
-            print("ERROR: No MLIP file found...", self.model.force_field)
+            self.error_output.value = """
+                <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px;">
+                    <strong>Error:</strong> No MLIP force field file provided.
+                </div>"""
             return
         self.submit_btn.description = "Submitted"
         self.submit_btn.disabled = True

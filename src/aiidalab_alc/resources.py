@@ -12,7 +12,7 @@ class ComputationalResourcesModel(tl.HasTraits):
     """Model for the resource setup stage."""
 
     code_name = tl.Unicode("").tag(sync=True)
-    code_label = tl.Unicode("").tag(sync=True)
+    #code_label = tl.Unicode("").tag(sync=True)
     device_name = tl.Unicode("").tag(sync=True)
     ncpus = tl.Int(1).tag(sync=True)
     process_label = tl.Unicode("").tag(sync=True)
@@ -36,8 +36,9 @@ class ComputationalResourcesModel(tl.HasTraits):
         bool
             True if all inputs are valid, False otherwise.
         """
-        if not self.code_label:
-            print("ERROR: No code selected.")
+        if not self.code_name:
+            return False
+        if not self.process_label:
             return False
         return True
 
@@ -80,11 +81,14 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         )
         self.submit_btn.on_click(self._submit)
 
+        self.error_output = ipw.HTML(layout={"margin": "10px auto", "width": "80%"})
+
         self.children = [
             # self.header,
             self.guide,
             self.mlips_warning if not self.mlips_installed else ipw.HTML(""),
             ResourceSetupBox(model=self.model),
+            self.error_output,
             self.submit_btn,
         ]
         return
@@ -99,12 +103,25 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
 
     def _submit(self, _=None) -> None:
         """Handle the submission of the AiiDA process."""
+        self.error_output.value = ""
+
         if self.model.validate():
             self.model.submitted = True
             self.submit_btn.disabled = True
             self.submit_btn.description = "Submitted"
         else:
-            print("ERROR: Input Validation Failed")
+            # Capture specific validation errors for the UI
+            errors = []
+            if not self.model.code_name:
+                errors.append("No code selected.")
+            if not self.model.process_label:
+                errors.append("Process label cannot be empty.")
+
+            error_text = " ".join(errors) or "Input validation failed."
+            self.error_output.value = f"""
+                <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px;">
+                    <strong>Validation Error:</strong> {error_text}
+                </div>"""
         return
 
     def _refresh_widget(self) -> None:
@@ -140,10 +157,10 @@ class ResourceSetupBox(ipw.VBox):
 
         self.code = ipw.Combobox(
             description="Code:",
-            value = "janus",
+            value = "",
             layout={"width": "60%"},
         )
-        tl.link((self.code, "value"), (self.model, "code_label"))
+        tl.link((self.code, "value"), (self.model, "code_name"))
         self.refresh_codes_button = ipw.Button(
             description="Refresh",
             button_style="info",
@@ -159,10 +176,12 @@ class ResourceSetupBox(ipw.VBox):
 
         tl.link((self.code, "value"), (self.model, "code_name"))
 
+        #style = {'description_width': 'initial'}
         self.device_dropdown = ipw.Dropdown(
-            options=["cpu", "gpu"],
+            options=["cpu", "cuda"],
             value = "cpu",
             description="Device:",
+            #style=style,
             disabled=False,
             layout=ipw.Layout(width="80%"),
         )
@@ -174,6 +193,7 @@ class ResourceSetupBox(ipw.VBox):
             min=1,
             max=128,
             step=1,
+            #style=style,
             description="No. CPUs:",
             disabled=False,
             layout=ipw.Layout(width="80%"),
@@ -185,6 +205,7 @@ class ResourceSetupBox(ipw.VBox):
             placeholder="Enter process label",
             description="Process Label:",
             disabled=False,
+            #style=style,
             layout=ipw.Layout(width="80%"),
         )
         tl.link((self.label, "value"), (self.model, "process_label"))
@@ -194,6 +215,7 @@ class ResourceSetupBox(ipw.VBox):
             placeholder="Enter process description",
             description="Description:",
             disabled=False,
+            #style=style,
             layout=ipw.Layout(width="80%"),
         )
         tl.link((self.description, "value"), (self.model, "process_description"))
@@ -211,10 +233,12 @@ class ResourceSetupBox(ipw.VBox):
         qb = QueryBuilder()
         qb.append(Code, project=["label", "id"])
         codes = qb.all()
-        code_labels = [f"{label}" for label, id in codes]
-        self.code.options = code_labels
-        if code_labels:
-            self.code.value = code_labels[0]
+        code_names = [f"{name}" for name, id in codes]
+        self.code.options = code_names
+        if code_names:
+            self.code.value = code_names[0]
+        else:
+            self.code.value = "No codes are available. Please add a code to AiiDA."
         return
     
     def _update_device(self, _) -> None:
