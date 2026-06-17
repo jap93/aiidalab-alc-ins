@@ -18,6 +18,8 @@ RUN pip install -e /home/jovyan/apps/aiidalab-mlip --no-cache-dir --no-user
 RUN pip install -e /home/jovyan/apps/aiidalab-mlip/aiida-mlip-phonon --no-cache-dir --no-user
 RUN pip install mace-torch --no-cache-dir --no-user
 
+LABEL org.opencontainers.image.source=https://github.com/jap93/aiidalab-alc-phonon
+
 USER ${NB_UID}
 WORKDIR ${HOME}
 
