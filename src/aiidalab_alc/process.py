@@ -8,6 +8,7 @@ import traitlets as tl
 from aiida.engine import submit
 from aiida.orm import Dict, load_code
 from ipywidgets import dlink
+from IPython.display import Javascript, display, clear_output
 from pathlib import Path
 from aiida_mlip.data.model import ModelData
 from aiida.orm import StructureData
@@ -39,7 +40,7 @@ class MainAppModel(tl.HasTraits):
 
         self.resource_model.observe(self._submit_model, "submitted")
         dlink((self, "block_results"), (self.results_model, "blocked"))
-        print("resuly_model", self.results_model.process_uuid)
+        
         self.process = None
 
         return
@@ -60,7 +61,6 @@ class MainAppModel(tl.HasTraits):
     def reset(self) -> None:
         """Reset the state of the model."""
         self.submitted = False
-
 
 class MLIPProcess:
     """Class to handle a MLIP AiiDA process."""
@@ -93,6 +93,10 @@ class MLIPProcess:
         bool
             True if the model is valid, False otherwise.
         """
+        
+
+
+
         if not model.structure_model.has_structure:
             if not model.structure_model.has_file:
                 print("No structure provided.")
@@ -104,6 +108,7 @@ class MLIPProcess:
         
         # Add more validation checks as needed
         return True
+
 
     def submit_process(self):
         """Submit the AiiDA process."""

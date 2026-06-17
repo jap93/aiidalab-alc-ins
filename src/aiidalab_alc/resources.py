@@ -116,7 +116,7 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
                 errors.append("No code selected.")
             if not self.model.process_label:
                 errors.append("Process label cannot be empty.")
-
+            print("here", errors)
             error_text = " ".join(errors) or "Input validation failed."
             self.error_output.value = f"""
                 <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px;">
