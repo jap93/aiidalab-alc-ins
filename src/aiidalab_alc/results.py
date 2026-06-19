@@ -146,10 +146,16 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         else:
             phonon_vwr = ipw.HTML("<p>No output phonon data found for this process.</p>")
 
+        # 3: download of data options
+        self.download_input_widget = ipw.HBox()
+        self.download_options_widget = DownloadOptionsWidget()
+        self.download_input_widget.children = [self.download_options_widget]
+        
         # Result tabs
-        tabs = ipw.Tab(children=[structure_vwr, phonon_vwr])
+        tabs = ipw.Tab(children=[structure_vwr, phonon_vwr, self.download_input_widget])
         tabs.set_title(0, "Resulting Structure")
         tabs.set_title(1, "Phonon Dispersion")
+        tabs.set_title(2, "Download Options")
 
         self.children = [
             ipw.HTML(f"<h4>Results for Process: {self.model.process_uuid}</h4>"),
@@ -213,4 +219,81 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             "pdos": {"x": x_pdos.tolist(), "y": y_pdos.tolist()}
         }
         return json_data
+    
+class DownloadOptionsWidget(ipw.VBox):
+    """Widget for selecting the download options."""
+
+    def __init__(self, **kwargs):
+        """
+        DownloadOptionsWidget constructor.
+
+        Parameters
+        ----------
+        model : MLIPWorkflowModel
+            The model that defines the data related to this step in the setup wizard.
+        **kwargs :
+            Keyword arguments passed to the parent class's constructor.
+        """
+        super().__init__(**kwargs)
+        self.rendered = False
+
+        style = {'description_width': 'initial'}
+        self.bands_chk = ipw.Checkbox(
+            value=False, description="Bands", indent=True
+        )
+        self.dos_chk = ipw.Checkbox(
+            value=False, description="DoS", indent=True
+        )
+        self.pdos_chk = ipw.Checkbox(
+            value=False, description="PDOS", indent=True
+        )
+        self.force_constant_chk = ipw.Checkbox(
+            value=False, description="Force Constants", indent=True
+        )
+
+        self.download_btn = ipw.Button(
+            description="Download Results",
+            disabled=False,
+            button_style="success",
+            tooltip="Download the selected results",
+            icon="download",
+            layout={"margin": "auto", "width": "60%"},
+        )
+        self.download_btn.on_click(self._download_results)
+
+        self.children = [
+            self.bands_chk,
+            self.dos_chk,
+            self.pdos_chk,
+            self.force_constant_chk,
+            self.download_btn,
+        ]
+
+        return
+    
+    def _download_results(self, _):
+        """Handle the download button click event."""
+        selected_options = {
+            "bands": self.bands_chk.value,
+            "dos": self.dos_chk.value,
+            "pdos": self.pdos_chk.value,
+            "force_constants": self.force_constant_chk.value,
+        }
+        # Here you would implement the logic to download the selected results
+        print("Selected options for download:", selected_options)
+    
+    def render(self):
+        """Render the options widget contents if not already rendered."""
+        if self.rendered:
+            return
+
+        self.rendered = True
+        return
+
+    def disable(self, val: bool) -> None:
+        """Disable the input fields."""
+        for child in self.children:
+            child.disabled = val
+        return
+
     
