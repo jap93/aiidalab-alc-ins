@@ -7,6 +7,9 @@
 *.json
 *.xz
 *.bak
+*.dat
+*.hdf5
+mace_mp_small.model
 test_*.py
 phon_2py.py
 yaml_to_bandsdata.py

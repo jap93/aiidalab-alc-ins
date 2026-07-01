@@ -63,6 +63,7 @@ class ResultsModel(ProcessModel):
     phonon_band_structure = tl.Instance(BandsData, allow_none=True)
     phonon_dos = tl.Unicode("", allow_none=True)
     phonon_pdos = tl.Unicode("", allow_none=True)
+    phonopy = tl.Dict({}, allow_none=True)
 
 class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     """Wizard for viewing process progress and results."""
@@ -148,7 +149,7 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
 
         # 3: download of data options
         self.download_input_widget = ipw.HBox()
-        self.download_options_widget = DownloadOptionsWidget()
+        self.download_options_widget = DownloadOptionsWidget(self.model)
         self.download_input_widget.children = [self.download_options_widget]
         
         # Result tabs
@@ -223,7 +224,7 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
 class DownloadOptionsWidget(ipw.VBox):
     """Widget for selecting the download options."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, model: ResultsModel, **kwargs):
         """
         DownloadOptionsWidget constructor.
 
@@ -235,6 +236,7 @@ class DownloadOptionsWidget(ipw.VBox):
             Keyword arguments passed to the parent class's constructor.
         """
         super().__init__(**kwargs)
+        self.model = model
         self.rendered = False
 
         style = {'description_width': 'initial'}
@@ -247,8 +249,8 @@ class DownloadOptionsWidget(ipw.VBox):
         self.pdos_chk = ipw.Checkbox(
             value=False, description="PDOS", indent=True
         )
-        self.force_constant_chk = ipw.Checkbox(
-            value=False, description="Force Constants", indent=True
+        self.phonopy_chk = ipw.Checkbox(
+            value=False, description="Phonopy", indent=True
         )
 
         self.download_btn = ipw.Button(
@@ -265,23 +267,43 @@ class DownloadOptionsWidget(ipw.VBox):
             self.bands_chk,
             self.dos_chk,
             self.pdos_chk,
-            self.force_constant_chk,
+            self.phonopy_chk,
             self.download_btn,
         ]
 
         return
     
     def _download_results(self, _):
-        """Handle the download button click event."""
+        """Handle the download button click event. Very basic at the moment, just prints the selected options."""
         selected_options = {
             "bands": self.bands_chk.value,
             "dos": self.dos_chk.value,
             "pdos": self.pdos_chk.value,
-            "force_constants": self.force_constant_chk.value,
+            "phonopy": self.phonopy_chk.value,
         }
         # Here you would implement the logic to download the selected results
         print("Selected options for download:", selected_options)
-    
+
+
+        if self.bands_chk.value:
+            np.savetxt("bands_data.dat", self.model.phonon_band_structure.get_bands())
+
+        if self.dos_chk.value:
+            filename = "dos_data.dat"
+            with open(filename, "w") as f:
+                f.write(self.model.phonon_dos)
+
+        if self.pdos_chk.value:
+            filename = "pdos_data.dat"
+            with open(filename, "w") as f:
+                f.write(self.model.phonon_pdos)
+
+        if self.phonopy_chk.value:
+            json_file = "phonopy_data.json"
+            with open(json_file, "w") as f:
+                json.dump(self.model.phonopy, f, indent=4)
+            print(f"Phonopy data saved to {json_file}")
+
     def render(self):
         """Render the options widget contents if not already rendered."""
         if self.rendered:

@@ -218,6 +218,11 @@ class MLIPProcess:
 
         self.node = wg.nodes[0]
         
+        #force constants are always needed for scattering calculations, so we will always save them
+        with wg.nodes[4].outputs['force_constants'].value.open(mode='rb') as source:
+            with open('force_constants.hdf5', mode='wb') as target:
+                shutil.copyfileobj(source, target)
+
         with wg.nodes[4].outputs['band_structure'].value.open(mode='rb') as source:
             with open('bands.yml.xz', mode='wb') as target:
                 shutil.copyfileobj(source, target)
@@ -229,6 +234,7 @@ class MLIPProcess:
         self.model.results_model.phonon_band_structure = self._clean_band_structure_data(data)
         self.model.results_model.phonon_dos = wg.tasks.ph_calc.outputs.dos.value.get_content()
         self.model.results_model.phonon_pdos = wg.tasks.ph_calc.outputs.pdos.value.get_content()
+        self.model.results_model.phonopy = wg.tasks.ph_calc.outputs.results_dict.value.get_dict()
         return
     
     def _phonopy_to_bandsplot(self, phonopy_data):
