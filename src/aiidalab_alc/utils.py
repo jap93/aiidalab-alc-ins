@@ -5,6 +5,9 @@ from importlib import import_module
 from os import getenv
 
 from IPython.display import Javascript, display
+from ase import Atoms
+from phonopy.structure.atoms import PhonopyAtoms
+
 
 
 def get_py_app_dir() -> pathlib.Path:
@@ -103,3 +106,21 @@ def test_resource_import() -> bool:
         raise e
     else:
         return True
+
+
+def phonopy_to_ase(phonopy_atoms: PhonopyAtoms) -> Atoms:
+  return Atoms(
+      symbols=phonopy_atoms.symbols,
+      cell=phonopy_atoms.cell,
+      positions=phonopy_atoms.positions,
+      pbc=True,
+  )
+
+
+def ase_to_phonopy(ase_atoms) -> PhonopyAtoms:
+  return PhonopyAtoms(
+      symbols=ase_atoms.get_chemical_symbols(),
+      cell=ase_atoms.get_cell(),
+      positions=ase_atoms.get_positions(),
+  )
+

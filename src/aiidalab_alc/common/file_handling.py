@@ -25,7 +25,7 @@ class FileUploadWidget(HBox, tl.HasTraits):
         self.file_dict = None
 
         self.file_upload = FileUpload(
-            accept="",
+            accept=" ",
             multiple=False,
             description="Upload",
             layout={"width": "20%"},
@@ -50,35 +50,51 @@ class FileUploadWidget(HBox, tl.HasTraits):
 
     def _on_file_upload(self, _):
         """Handle file upload events."""
-        if self.file_upload.value:
-            self.file_dict = self.file_upload.value[
-                list(self.file_upload.value.keys())[0]
-            ]
-            self.file_handle.value = self.file_dict["metadata"]["name"]
+        value = self.file_upload.value
+        file_dict = None
+        if value:
+            if isinstance(value, dict):
+                file_dict = next(iter(value.values()), None)
+            elif isinstance(value, (tuple, list)):
+                file_dict = value[0] if len(value) else None
+
+        if file_dict is not None:
+            self.file_dict = file_dict
+            self.file_handle.value = self.file_dict.get("metadata", {}).get(
+                "name", self.file_dict.get("name", "")
+            )
             self.file = self.get_aiida_file_object()
         else:
+            self.file_dict = None
             self.file_handle.value = ""
+            self.file = None
         return
 
     def get_file_contents(self) -> BytesIO | None:
         """Get the contents of the uploaded file as a BytesIO object."""
         if self.file_dict is not None:
-            return BytesIO(self.file_dict["content"])
+            content = self.file_dict.get("content")
+            if hasattr(content, "tobytes"):
+                content = content.tobytes()
+            return BytesIO(content)
         return None
 
     def filename(self) -> str:
         """Get the name of the uploaded file."""
         if self.file_dict is not None:
-            return self.file_dict["metadata"]["name"]
+            return self.file_dict.get("metadata", {}).get(
+                "name", self.file_dict.get("name", "")
+            )
         return ""
 
     def get_aiida_file_object(self):
         """Get the uploaded file as an AiiDA SinglefileData object."""
+        filename = self.filename()
         if self.file_dict is not None:
             return SinglefileData(
                 file=self.get_file_contents(),
-                filename=self.filename(),
-                label=self.filename(),
+                filename=filename,
+                label=filename,
                 description=self.file_handle.description,
             )
         return None

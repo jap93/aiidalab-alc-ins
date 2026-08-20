@@ -6,11 +6,14 @@ import traitlets as tl
 from aiida.orm import SinglefileData
 
 from aiidalab_alc.common.file_handling import FileUploadWidget, FilenameSelector, create_filename_selector
+from aiidalab_alc.data import DataStepModel
 
-class MLIPWorkflowModel(tl.HasTraits):
+class WorkflowCalculationModel(tl.HasTraits):
     """The model for setting up a MLIP workflow."""
 
-    #parameters for MLIP
+    
+
+        #parameters for MLIP
     calc_style = tl.Unicode("Geometry optimisation", allow_none=False)
     optimisation = tl.Unicode("cell lengths", allow_none=False)
     maximum_force = tl.Float(0.001, allow_none=False)
@@ -29,16 +32,90 @@ class MLIPWorkflowModel(tl.HasTraits):
 
     default_guide = ""
 
+class WorkflowCalculationStep(ipw.VBox, awb.WizardAppWidgetStep):
+    """Wizard for viewing process progress and results."""
+
+    def __init__(self, data_model: DataStepModel, work_model: WorkflowCalculationModel, **kwargs):
+        """
+        DataWizardStep constructor.
+
+        Parameters
+        ----------
+        model : DataStepModel
+            The model controlling required data.
+        **kwargs :
+            Keyword arguments passed to the parent class's constructor.
+        """
+        super().__init__(**kwargs)
+        self.data_model = data_model
+        self.work_model = work_model
+        self.rendered = False
+        #self.model.observe(self._on_process_uuid_change, "process_uuid")
+
+    def _on_process_uuid_change(self, _):
+        """Update view when process UUID changes."""
+        if self.rendered:
+            self._update_view()
+
+    def render(self) -> None:
+        """Render the wizard's content."""
+        if self.rendered:
+            return
+        self._update_view()
+        self.rendered = True
+
+    def _update_view(self):
+
+        #if not self.model.process_uuid:
+        #    self.children = [ipw.HTML("Waiting for calculation results...")]
+        #    return
+
+        # 1. MLIP/Janus Panel
+        #mlip_vwr = MethodWizardStep(model=self.work_model)
+        #mlip_vwr.render()
+
+        # 2. Phonon Force constant Panel
+        ins_vwr = ipw.HBox()  # BandsDataViewer(bands_node, units="eV", downloadable=True)
+
+        vwr_panel = None
+        if self.data_model.has_structure or self.data_model.has_file:
+            mlip_vwr = MethodWizardStep(model=self.work_model)
+            mlip_vwr.render()
+            vwr_panel = ipw.VBox(
+                children=[
+                    mlip_vwr,
+                ]
+            )
+
+        elif self.data_model.force_constants_file:
+            vwr_panel = ipw.VBox(
+                children=[
+                    ipw.HTML("<h5>Inelastic Scattering</h5>"),
+                    ins_vwr,
+                ]
+            )
+        else:
+            vwr_panel = ipw.VBox(
+                children=[
+                    ipw.HTML("<h5>Select structure or force constants</h5>"),
+                ]
+            )
+
+        self.children = [
+            vwr_panel,
+        ]
+
+
 class MethodWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     """Wizard setup for the calculation workflow."""
 
-    def __init__(self, model: MLIPWorkflowModel, **kwargs):
+    def __init__(self, model: WorkflowCalculationModel, **kwargs):
         """
         MethodWizardStep constructor.
 
         Parameters
         ----------
-        model : MLIPWorkflowModel
+        model : WorkflowCalculationModel
             The model that defines the data related to this step in the setup wizard.
         **kwargs :
             Keyword arguments passed to the parent class's constructor.
@@ -120,13 +197,13 @@ class MethodWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
 class MLIPOptionsWidget(ipw.VBox):
     """Widget for selecting the MLIP input options."""
 
-    def __init__(self, model: MLIPWorkflowModel, **kwargs):
+    def __init__(self, model: WorkflowCalculationModel, **kwargs):
         """
         MLIPOptionsWidget constructor.
 
         Parameters
         ----------
-        model : MLIPWorkflowModel
+        model : WorkflowCalculationModel
             The model that defines the phonon data.
         **kwargs :
             Keyword arguments passed to the parent class's constructor.
@@ -239,15 +316,113 @@ class MLIPOptionsWidget(ipw.VBox):
         return
     
 class PhononOptionsWidget(ipw.VBox):
-    """Widget for selecting the MLIP input options."""
+    """Widget for selecting the Phonon input options."""
 
-    def __init__(self, model: MLIPWorkflowModel, **kwargs):
+    def __init__(self, model: WorkflowCalculationModel, **kwargs):
         """
-        MLIPOptionsWidget constructor.
+        PhononOptionsWidget constructor.
 
         Parameters
         ----------
-        model : MLIPWorkflowModel
+        model : WorkflowCalculationModel
+            The model that defines the data related to this step in the setup wizard.
+        **kwargs :
+            Keyword arguments passed to the parent class's constructor.
+        """
+        super().__init__(**kwargs)
+        self.model = model
+        self.rendered = False
+
+        style = {'description_width': 'initial'}
+        self.x_axis_input = ipw.BoundedIntText(
+            value=self.model.supercell_size_x,
+            min=1,
+            max=10,
+            step=1,
+            description="supercell size in x:", 
+            style=style,
+            disabled=False,
+            layout=ipw.Layout(width="80%"),
+        )
+        tl.link((self.x_axis_input, "value"), (self.model, "supercell_size_x"))
+
+        self.y_axis_input = ipw.BoundedIntText(
+            value=self.model.supercell_size_y,
+            min=1,
+            max=10,
+            step=1,
+            description="supercell size in y:",
+            style=style,
+            disabled=False,
+            layout=ipw.Layout(width="80%"),
+        )
+        tl.link((self.y_axis_input, "value"), (self.model, "supercell_size_y"))
+
+        self.z_axis_input = ipw.BoundedIntText(
+            value=self.model.supercell_size_z,
+            min=1,
+            max=10,
+            step=1,
+            description="supercell size in z:",
+            style=style,
+            disabled=False,
+            layout=ipw.Layout(width="80%"),
+        )
+        tl.link((self.z_axis_input, "value"), (self.model, "supercell_size_z"))
+
+        self.points_input = ipw.BoundedIntText(
+            value=self.model.number_points,
+            min=1,
+            max=100,
+            step=1,
+            description="   number of points:",
+            style=style,
+            disabled=False,
+            layout=ipw.Layout(width="80%"),
+        )
+        tl.link((self.points_input, "value"), (self.model, "number_points"))
+      
+        self.enable_auto_bands_chk = ipw.Checkbox(
+            value=True, description="Auto bands calculation", indent=True
+        )
+                
+        self.children = [
+            self.x_axis_input,
+            self.y_axis_input,
+            self.z_axis_input,
+            self.points_input,
+            self.enable_auto_bands_chk,
+        ]
+
+        tl.link((self.enable_auto_bands_chk, "value"), (self.model, "auto_bands"))
+
+        return
+    
+    
+    def render(self):
+        """Render the options widget contents if not already rendered."""
+        if self.rendered:
+            return
+
+        self.rendered = True
+        return
+
+    def disable(self, val: bool) -> None:
+        """Disable the input fields."""
+        for child in self.children:
+            child.disabled = val
+        return
+    
+class INSOptionsWidget(ipw.VBox):
+    """Widget for selecting the INS input options."""
+
+    def __init__(self, model: WorkflowCalculationModel, **kwargs):
+        """
+        INSOptionsWidget constructor.
+
+        Parameters
+        ----------
+        model : WorkflowCalculationModel
             The model that defines the data related to this step in the setup wizard.
         **kwargs :
             Keyword arguments passed to the parent class's constructor.

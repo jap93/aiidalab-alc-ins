@@ -22,7 +22,7 @@ from aiidalab_widgets_base.viewers import BandsDataViewer
 
 #bool8 was depracated in numpy 1.24, but BandsDataViewer still uses it, so alias it to bool_ for compatibility
 if np.__version__ >= "1.24":
-    np.bool8 = np.bool
+    np.bool8 = bool
 
 class ProcessModel(tl.HasTraits):
     """Model describing an AiiDA process."""

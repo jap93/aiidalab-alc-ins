@@ -19,8 +19,8 @@ from aiida_workgraph import WorkGraph
 
 from aiidalab_alc.resources import ComputationalResourcesModel
 from aiidalab_alc.results import ResultsModel
-from aiidalab_alc.structure import StructureStepModel
-from aiidalab_alc.workflow import MLIPWorkflowModel
+from aiidalab_alc.data import DataStepModel
+from aiidalab_alc.workflow import WorkflowCalculationModel
 
 from ase import Atoms
 import numpy as np
@@ -33,8 +33,8 @@ class MainAppModel(tl.HasTraits):
     def __init__(self):
         """MainAppModel constructor."""
         super().__init__()
-        self.structure_model = StructureStepModel()
-        self.workflow_model = MLIPWorkflowModel()
+        self.structure_model = DataStepModel()
+        self.workflow_model = WorkflowCalculationModel()
         self.resource_model = ComputationalResourcesModel()
         self.results_model = ResultsModel()
 

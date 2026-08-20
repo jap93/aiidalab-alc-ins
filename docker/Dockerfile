@@ -12,8 +12,10 @@ FROM ghcr.io/stfc/alc-ux/base:py310
 
 ADD aiidalab-mlip /home/jovyan/apps/aiidalab-mlip
 RUN pwd
-RUN ls -l
-RUN ls -l
+#RUN ls -l
+#RUN ls -a /home/jovyan/
+#RUN ls -a /home/jovyan/apps/
+#RUN ls -a /home/jovyan/apps/aiidalab-mlip
 RUN pip install -e /home/jovyan/apps/aiidalab-mlip --no-cache-dir --no-user
 RUN pip install -e /home/jovyan/apps/aiidalab-mlip/aiida-mlip-phonon --no-cache-dir --no-user
 RUN pip install mace-torch --no-cache-dir --no-user
