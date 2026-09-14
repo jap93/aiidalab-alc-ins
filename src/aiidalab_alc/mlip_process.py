@@ -1,15 +1,18 @@
-"""Module for handling AiiDA processes."""
-import io
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from ase import Atoms
+import numpy as np
+from pathlib import Path
 import lzma
 import yaml
 import shutil
 
-import traitlets as tl
-from aiida.engine import submit
+
 from aiida.orm import Dict, load_code
-from ipywidgets import dlink
-from IPython.display import Javascript, display, clear_output
-from pathlib import Path
+
+
 from aiida_mlip.data.model import ModelData
 from aiida.orm import StructureData
 from aiida.orm import load_code, load_node
@@ -22,87 +25,38 @@ from aiidalab_alc.results import ResultsModel
 from aiidalab_alc.data import DataStepModel
 from aiidalab_alc.workflow import WorkflowCalculationModel
 
-from ase import Atoms
-import numpy as np
-
-class MainAppModel(tl.HasTraits):
-    """The main AiiDAlab application MVC model."""
-
-    block_results = tl.Bool(True, allow_none=False)
-
-    def __init__(self):
-        """MainAppModel constructor."""
-        super().__init__()
-        self.structure_model = DataStepModel()
-        self.workflow_model = WorkflowCalculationModel()
-        self.resource_model = ComputationalResourcesModel()
-        self.results_model = ResultsModel()
-
-        self.resource_model.observe(self._submit_model, "submitted")
-        dlink((self, "block_results"), (self.results_model, "blocked"))
-        
-        self.process = None
-
-        return
-
-    def _submit_model(self, _) -> None:
-        """Handle the submission of the AiiDA process."""
-        if MLIPProcess.validate_model(self):
-            self.process = MLIPProcess(self)
-            self.process.submit_process()
-            self.block_results = False
-
-            self.results_model.process_uuid = self.process.node.uuid
-            
-        else:
-            print("ERROR: Input Validation Failed")
-        return
-
-    def reset(self) -> None:
-        """Reset the state of the model."""
-        self.submitted = False
-
 class MLIPProcess:
     """Class to handle a MLIP AiiDA process."""
 
-    def __init__(self, model: MainAppModel):
+    def __init__(self, data_model: DataStepModel, workflow_model: WorkflowCalculationModel, resource_model: ComputationalResourcesModel, results_model: ResultsModel):
+            """Initialise the MLIP process wrapper."""
+            self.data_model = data_model
+            self.workflow_model = workflow_model
+            self.resource_model = resource_model
+            self.results_model = results_model
+            self.node = None
+
+    def validate_model(self) -> bool:
         """
-        MLIPProcess constructor.
+        Validate the mlip application model.
 
         Parameters
         ----------
         model : MainAppModel
-            The main application model containing all necessary data.
-        """
-        self.model = model
-        self.node = None
-        return
-
-    @classmethod
-    def validate_model(cls, model: MainAppModel) -> bool:
-        """
-        Validate the main application model.
-
-        Parameters
-        ----------
-        model : MainAppModel
-            The main application model to validate.
+            The mlip application model to validate.
 
         Returns
         -------
         bool
             True if the model is valid, False otherwise.
         """
-        
 
-
-
-        if not model.structure_model.has_structure:
-            if not model.structure_model.has_file:
+        if not self.data_model.has_structure:
+            if not self.data_model.has_file:
                 print("No structure provided.")
                 return False
-            
-        if not model.workflow_model.force_field:
+
+        if not self.workflow_model.force_field:
             print("No force field provided.")
             return False
         
@@ -112,23 +66,24 @@ class MLIPProcess:
 
     def submit_process(self):
         """Submit the AiiDA process."""
+        if not self.validate_model():
+            return
+        structure = self.data_model.structure
+        code = load_code(self.resource_model.code_name)
 
-        structure = self.model.structure_model.structure
-        code = load_code(self.model.resource_model.code_name)
+        device = self.resource_model.device_name   
 
-        device = self.model.resource_model.device_name   
-
-        model_file = self.model.workflow_model.force_field
+        model_file = self.workflow_model.force_field
         if not Path(model_file).exists():
             print("model file does not exist", model_file)
 
-        architecture = self.model.workflow_model.architecture
+        architecture = self.workflow_model.architecture
         mlip_model = ModelData.from_local(model_file, architecture=architecture)
 
-        calculation_style = self.model.workflow_model.calc_style.lower()
-        optimisation = self.model.workflow_model.optimisation.lower()
+        calculation_style = self.workflow_model.calc_style.lower()
+        optimisation = self.workflow_model.optimisation.lower()
 
-        dftd3 = self.model.workflow_model.use_dftd3
+        dftd3 = self.workflow_model.use_dftd3
 
         if calculation_style == "geometry optimisation":
             inputs_geom = {
@@ -136,7 +91,7 @@ class MLIPProcess:
                 "model": mlip_model,
                 "struct": structure,
                 "device": Str(device),
-                "fmax": Float(self.model.workflow_model.maximum_force),
+                "fmax": Float(self.workflow_model.maximum_force),
                 "metadata": {"options": {"resources": {"num_machines": 1}}},
             }
 
@@ -164,7 +119,7 @@ class MLIPProcess:
 
             geomoptCalc = CalculationFactory("mlip.sp")
 
-        supercell = str(self.model.workflow_model.supercell_size_x) + " " + str(self.model.workflow_model.supercell_size_y) + " " + str(self.model.workflow_model.supercell_size_z)
+        supercell = str(self.workflow_model.supercell_size_x) + " " + str(self.workflow_model.supercell_size_y) + " " + str(self.workflow_model.supercell_size_z)
 
         inputs_phon = {
         "metadata": {"options": {"resources": {"num_machines": 1}}},

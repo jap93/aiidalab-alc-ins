@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import cast
 import numpy as np
 
+from aiidalab_alc.data import DataStepModel
 import aiidalab_widgets_base as awb
 from aiida import plugins
 import ipywidgets as ipw
@@ -19,6 +20,7 @@ from aiida.orm import (
     load_node,
 )
 from aiidalab_widgets_base.viewers import BandsDataViewer
+from aiidalab_alc.data import DataStepModel
 
 #bool8 was depracated in numpy 1.24, but BandsDataViewer still uses it, so alias it to bool_ for compatibility
 if np.__version__ >= "1.24":
@@ -68,7 +70,7 @@ class ResultsModel(ProcessModel):
 class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     """Wizard for viewing process progress and results."""
 
-    def __init__(self, model: ResultsModel, **kwargs):
+    def __init__(self, data_model: DataStepModel, result_model: ResultsModel, **kwargs):
         """
         ResultsWizardStep constructor.
 
@@ -80,9 +82,10 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             Keyword arguments passed to the parent class's constructor.
         """
         super().__init__(**kwargs)
-        self.model = model
+        self.data_model = data_model
+        self.result_model = result_model
         self.rendered = False
-        self.model.observe(self._on_process_uuid_change, "process_uuid")
+        self.result_model.observe(self._on_process_uuid_change, "process_uuid")
 
     def _on_process_uuid_change(self, _):
         """Update view when process UUID changes."""
@@ -112,8 +115,8 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         bands_data = None
         dos_data = None
 
-        if self.model.has_process:
-            outputs = self.model.process.outputs
+        if self.result_model.has_process:
+            outputs = self.result_model.process.outputs
             # Look for BandsData in outputs
             for label in outputs:
                 node = outputs[label]
@@ -125,23 +128,33 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
 
     def _update_view(self):
 
-        if not self.model.process_uuid:
+        
+        if not self.result_model.process_uuid and self.data_model.data_type == "ase_mlip":
             self.children = [ipw.HTML("Waiting for calculation results...")]
             return
 
+        #create data depending on the style of calculation
+        if self.data_model.data_type == "ase_mlip":
+            structure_node = self.result_model.final_structure
+            bands_node = self.result_model.phonon_band_structure
+            dos_node = self.result_model.phonon_dos
+            pdos_node = self.result_model.phonon_pdos
+            dos = self._create_density_of_states_data(dos_node, pdos_node)
+        else:
+            if not self.result_model.process_uuid:
+                #data is from input (either castep of phonopy)
+                structure_node = self.data_model.structure_model.structure
+            else:
+                #data must be after a INS calculation
+                structure_node = self.data_model.structure_model.structure
+
         # 1. Structure Panel
-        structure_node = self.model.final_structure
         if structure_node:
             structure_vwr = awb.viewers.StructureDataViewer(structure=structure_node)
         else:
             structure_vwr = ipw.HTML("<p>No output structure found for this process.</p>")
 
         # 2. Phonon Dispersion Panel
-        bands_node = self.model.phonon_band_structure
-        dos_node = self.model.phonon_dos
-        pdos_node = self.model.phonon_pdos
-        dos = self._create_density_of_states_data(dos_node, pdos_node)
-
         if bands_node:
             phonon_vwr = BandsDataViewer(bands_node, units = "eV", downloadable=True)
         else:
@@ -149,7 +162,7 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
 
         # 3: download of data options
         self.download_input_widget = ipw.HBox()
-        self.download_options_widget = DownloadOptionsWidget(self.model)
+        self.download_options_widget = DownloadOptionsWidget(self.result_model)
         self.download_input_widget.children = [self.download_options_widget]
         
         # Result tabs
@@ -159,7 +172,7 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         tabs.set_title(2, "Download Options")
 
         self.children = [
-            ipw.HTML(f"<h4>Results for Process: {self.model.process_uuid}</h4>"),
+            ipw.HTML(f"<h4>Results for Process: {self.result_model.process_uuid}</h4>"),
             tabs,
         ]
 

@@ -1,17 +1,22 @@
 """Defines the model and view components for the structure setup stage."""
 
 from pathlib import Path
+from io import BytesIO
 from tempfile import NamedTemporaryFile
+
+import yaml
 
 import aiidalab_widgets_base as awb
 import ase
 import ipywidgets as ipw
 import traitlets as tl
-from aiida.orm import SinglefileData, StructureData
+from aiida.orm import SinglefileData, StructureData, JsonableData
 
 from aiidalab_alc.common.database import AiiDADatabaseWidget
 from aiidalab_alc.common.file_handling import FileUploadWidget
 
+import sys
+from pathlib import Path as PathlibPath
 
 class DataStepModel(tl.HasTraits):
     """
@@ -235,7 +240,7 @@ class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             self.file_uploader.disable(True)
             self.database_widget.disable(True)
             self.submit_btn.disabled = True
-            self.model.data_type = "ase"
+            self.model.data_type = "ase_mlip"
             self.submit_btn.description = "Submitted"
             self.model.submitted = True
         else:
@@ -322,13 +327,22 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
 
     def _on_file_upload(self, change=None):
         """When file upload button is pressed."""
-        if self.model.data_type == "phonopy" and self.model.has_force_constants:
-            print(f"Force constants file uploaded from phonopy: {self.model.force_constants_file.filename}")
-            print(f"self.model.force_constants_file.content {self.model.force_constants_file.content}")
+        if self.model.data_type == "phonopy" and not self.model.has_force_constants:
+            phonopy_data = self.model.force_constants_file.get_content()
+            self.model.force_constants_file = self._phonopy_to_single_file_data(
+                phonopy_data
+            )
+            self.model.structure = self._phonpopy_to_structure_data(
+                phonopy_data
+            )
+            
+            
             self._update_children()
         if self.model.data_type == "castep" and self.model.has_force_constants:
             print(f"Force constants file uploaded from castep: {self.model.force_constants_file.filename}")
-            print(f"self.model.force_constants_file.content {self.model.force_constants_file.content}")
+            #print(f"self.model.force_constants_file.content {self.model.force_constants_file.content}")
+            #self.model.force_constants_file = read_force_constants_from_castep(self.model.force_constants_file.filename)
+            self.model.force_constants_file = ForceConstants.from_castep(self.model.force_constants_file.filename)
             self._update_children()
         return
 
@@ -343,6 +357,61 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         else:
             self.model.submitted = False
         return
+
+    def _phonpopy_to_structure_data(
+        self, phonopy_data: bytes | str | dict
+    ) -> StructureData:
+        """Convert a Phonopy YAML document to an AiiDA structure."""
+        if isinstance(phonopy_data, bytes):
+            phonopy_data = phonopy_data.decode("utf-8")
+        if isinstance(phonopy_data, str):
+            phonopy_data = yaml.safe_load(phonopy_data)
+        if not isinstance(phonopy_data, dict):
+            raise ValueError("Phonopy data must be YAML text or a mapping.")
+
+        cell_data = phonopy_data.get("unit_cell") or phonopy_data.get("primitive_cell")
+        if not isinstance(cell_data, dict):
+            raise ValueError("Phonopy YAML does not contain a unit_cell or primitive_cell.")
+
+        lattice = cell_data.get("lattice")
+        points = cell_data.get("points")
+        if not lattice or not points:
+            raise ValueError("Phonopy cell must contain lattice and points.")
+
+        atoms = ase.Atoms(
+            symbols=[point["symbol"] for point in points],
+            cell=lattice,
+            scaled_positions=[point["coordinates"] for point in points],
+            pbc=True,
+        )
+        return StructureData(ase=atoms)
+
+    def _phonopy_to_single_file_data(
+        self, phonopy_data: bytes | str | dict
+    ) -> SinglefileData:
+        """Convert a Phonopy YAML document to a SinglefileData object."""
+        if isinstance(phonopy_data, bytes):
+            phonopy_data = phonopy_data.decode("utf-8")
+        if isinstance(phonopy_data, str):
+            phonopy_data = yaml.safe_load(phonopy_data)
+        if not isinstance(phonopy_data, dict):
+            raise ValueError("Phonopy data must be YAML text or a mapping.")
+
+        fc = phonopy_data.get("force_constants")
+        if not isinstance(fc, dict):
+            raise ValueError("Phonopy YAML does not contain force_constants.")
+        #print(f'Force constants data: {fc}')
+
+        content = yaml.safe_dump(
+            #{"force_constants": fc},
+            {"force_constants":phonopy_data},
+            sort_keys=False,
+        ).encode("utf-8")
+        return SinglefileData(
+            file=BytesIO(content),
+            filename="force_constants.yaml",
+        )
+    
 
 class DataInputWidget(ipw.VBox):
     """Widget for the data input step."""
@@ -389,3 +458,6 @@ class DataInputWidget(ipw.VBox):
             self.input_method,
         ]
         self.rendered = True
+
+    
+# %%

@@ -7,7 +7,7 @@ import ipywidgets as ipw
 from IPython.display import display
 
 from aiidalab_alc.common.navigation import QuickAccessButtons
-from aiidalab_alc.process import MainAppModel
+from aiidalab_alc.main_process import MainAppModel
 from aiidalab_alc.resources import (
     ComputationalResourcesWizardStep,
 )
@@ -88,10 +88,10 @@ class WizardWidget(ipw.VBox):
         **kwargs :
             Keyword arguments passed to the `ipywidgets.VBox.__init__()`.
         """
-        self.structureStep = DataWizardStep(model.structure_model)
-        self.workflowStep =  WorkflowCalculationStep(model.structure_model, model.workflow_model)
+        self.structureStep = DataWizardStep(model.data_model)
+        self.workflowStep =  WorkflowCalculationStep(model.data_model, model.workflow_model)
         self.compResourceStep = ComputationalResourcesWizardStep(model.resource_model)
-        self.results_step = ResultsWizardStep(model.results_model)
+        self.results_step = ResultsWizardStep(model.data_model, model.results_model)
 
         self._wizard_app_widget = awb.WizardAppWidget(
             steps=[

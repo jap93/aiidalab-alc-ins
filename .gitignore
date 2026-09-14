@@ -9,6 +9,7 @@
 *.bak
 *.dat
 *.hdf5
+Miniforge3*
 mace_mp_small.model
 test_*.py
 phon_2py.py
@@ -27,5 +28,7 @@ dist/
 work/
 work/phonon/
 aiida-mlip-phonon/
+aiida_pythonjob_ins/
+abinslib/
 pip-wheel-metadata/
 .tox/
