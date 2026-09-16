@@ -47,6 +47,10 @@ class MainAppModel(tl.HasTraits):
 
     def _submit_model(self, _) -> None:
         """Handle the submission of the AiiDA process."""
+        print(
+                    f"Main Validating model for INS workflow with data type: "
+                    f"{self.data_model.has_structure}, {self.data_model.has_file}"
+                )
         if self.data_model.data_type in {"phonopy", "castep"}:
             self.process = INSProcess(self.data_model, self.workflow_model, self.resource_model, self.results_model)
             self.process.submit_process()

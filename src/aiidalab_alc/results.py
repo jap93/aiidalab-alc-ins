@@ -63,7 +63,7 @@ class ResultsModel(ProcessModel):
     blocked = tl.Bool(False)
     final_structure = tl.Instance(StructureData, allow_none=True)
     phonon_band_structure = tl.Instance(BandsData, allow_none=True)
-    phonon_dos = tl.Unicode("", allow_none=True)
+    phonon_dos = tl.Instance(XyData, allow_none=True)
     phonon_pdos = tl.Unicode("", allow_none=True)
     phonopy = tl.Dict({}, allow_none=True)
 
@@ -134,20 +134,12 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             return
 
         #create data depending on the style of calculation
-        if self.data_model.data_type == "ase_mlip":
-            structure_node = self.result_model.final_structure
-            bands_node = self.result_model.phonon_band_structure
-            dos_node = self.result_model.phonon_dos
-            pdos_node = self.result_model.phonon_pdos
-            dos = self._create_density_of_states_data(dos_node, pdos_node)
-        else:
-            if not self.result_model.process_uuid:
-                #data is from input (either castep of phonopy)
-                structure_node = self.data_model.structure_model.structure
-            else:
-                #data must be after a INS calculation
-                structure_node = self.data_model.structure_model.structure
-
+        structure_node = self.result_model.final_structure
+        bands_node = self.result_model.phonon_band_structure
+        dos_node = self.result_model.phonon_dos
+        pdos_node = self.result_model.phonon_pdos
+        #dos = self._create_density_of_states_data(dos_node, pdos_node)
+        
         # 1. Structure Panel
         if structure_node:
             structure_vwr = awb.viewers.StructureDataViewer(structure=structure_node)

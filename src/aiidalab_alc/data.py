@@ -2,7 +2,7 @@
 
 from pathlib import Path
 from io import BytesIO
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
 import yaml
 
@@ -11,6 +11,7 @@ import ase
 import ipywidgets as ipw
 import traitlets as tl
 from aiida.orm import SinglefileData, StructureData, JsonableData
+from aiida_pythonjob_ins.data import ForceConstantsData
 
 from aiidalab_alc.common.database import AiiDADatabaseWidget
 from aiidalab_alc.common.file_handling import FileUploadWidget
@@ -32,6 +33,7 @@ class DataStepModel(tl.HasTraits):
     structure_file = tl.Instance(SinglefileData, allow_none=True)
 
     force_constants_file = tl.Instance(SinglefileData, allow_none=True)
+    force_constants_data = tl.Instance(ForceConstantsData, allow_none=True)
     submitted = tl.Bool(False).tag(sync=True)
 
     default_guide = ""
@@ -327,23 +329,24 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
 
     def _on_file_upload(self, change=None):
         """When file upload button is pressed."""
-        if self.model.data_type == "phonopy" and not self.model.has_force_constants:
-            phonopy_data = self.model.force_constants_file.get_content()
-            self.model.force_constants_file = self._phonopy_to_single_file_data(
-                phonopy_data
-            )
-            self.model.structure = self._phonpopy_to_structure_data(
-                phonopy_data
-            )
+        if self.model.has_file:
             
+            if self.model.data_type == "phonopy":
+                phonopy_data = self.model.force_constants_file.get_content()
+                self.model.force_constants_file = self._phonopy_to_single_file_data(
+                    phonopy_data
+                )
+                
+
+                
             
-            self._update_children()
-        if self.model.data_type == "castep" and self.model.has_force_constants:
-            print(f"Force constants file uploaded from castep: {self.model.force_constants_file.filename}")
-            #print(f"self.model.force_constants_file.content {self.model.force_constants_file.content}")
-            #self.model.force_constants_file = read_force_constants_from_castep(self.model.force_constants_file.filename)
-            self.model.force_constants_file = ForceConstants.from_castep(self.model.force_constants_file.filename)
-            self._update_children()
+                self._update_children()
+            if self.model.data_type == "castep":
+                print(f"Force constants file uploaded from castep: {self.model.force_constants_file.filename}")
+                #print(f"self.model.force_constants_file.content {self.model.force_constants_file.content}")
+                #self.model.force_constants_file = read_force_constants_from_castep(self.model.force_constants_file.filename)
+                #self.model.force_constants_file = ForceConstants.from_castep(self.model.force_constants_file.filename)
+                self._update_children()
         return
 
     def submit_force_constants(self, _):
@@ -352,6 +355,19 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             self.file_uploader.disable(True)
             self.database_widget.disable(True)
             self.submit_btn.disabled = True
+
+            if self.model.data_type == "phonopy" and self.model.force_constants_file:
+                self.model.structure = self._phonpopy_to_structure_data(
+                    self.model.force_constants_file.get_content()
+                )
+                print(f"loaded structure from phonopy: {self.model.structure}") 
+                filename = self.model.force_constants_file.filename
+                phonopy_data = self.model.force_constants_file.get_content()
+                print(f"Force constants file uploaded from phonopy: {filename}")
+                self.model.force_constants_data = self._phonopy_to_force_constants_data(
+                    phonopy_data
+                )
+                print(f"force constants data built from phonopy: {self.model.force_constants_data}")
             self.submit_btn.description = "Submitted Force Constants"
             self.model.submitted = True
         else:
@@ -385,6 +401,32 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             pbc=True,
         )
         return StructureData(ase=atoms)
+
+    def _phonopy_to_force_constants_data(
+        self, phonopy_data: bytes | str | dict
+    ) -> ForceConstantsData:
+        """Convert a Phonopy YAML document to a ForceConstantsData object."""
+        if isinstance(phonopy_data, bytes):
+            phonopy_data = phonopy_data.decode("utf-8")
+        if isinstance(phonopy_data, str):
+            phonopy_data = yaml.safe_load(phonopy_data)
+        if not isinstance(phonopy_data, dict):
+            raise ValueError("Phonopy data must be YAML text or a mapping.")
+
+        if "force_constants" not in phonopy_data:
+            raise ValueError("Phonopy YAML does not contain force_constants.")
+
+        with TemporaryDirectory() as tmpdir:
+            summary_name = "phonopy_data.yaml"
+            tmp_path = Path(tmpdir) / summary_name
+            tmp_path.write_text(
+                yaml.safe_dump(phonopy_data, sort_keys=False),
+                encoding="utf-8",
+            )
+            return ForceConstantsData.from_phonopy(
+                path=tmpdir,
+                summary_name=summary_name,
+            )
 
     def _phonopy_to_single_file_data(
         self, phonopy_data: bytes | str | dict
