@@ -11,6 +11,7 @@ from aiida import plugins
 import ipywidgets as ipw
 import traitlets as tl
 from aiida.common.exceptions import NotExistent
+
 from aiida.orm import (
     BandsData,
     NodeLinksManager,
@@ -21,6 +22,7 @@ from aiida.orm import (
 )
 from aiidalab_widgets_base.viewers import BandsDataViewer
 from aiidalab_alc.data import DataStepModel
+from aiidalab_alc.common.plots import PlotWidget
 
 #bool8 was depracated in numpy 1.24, but BandsDataViewer still uses it, so alias it to bool_ for compatibility
 if np.__version__ >= "1.24":
@@ -137,6 +139,9 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         structure_node = self.result_model.final_structure
         bands_node = self.result_model.phonon_band_structure
         dos_node = self.result_model.phonon_dos
+        #print(f"dos_node: {((_, density, dos_unit),) = dos_node.get_y()}")
+        _, energy, energy_unit = dos_node.get_x()
+        ((_, density, dos_unit),) = dos_node.get_y()
         pdos_node = self.result_model.phonon_pdos
         #dos = self._create_density_of_states_data(dos_node, pdos_node)
         
@@ -152,16 +157,23 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         else:
             phonon_vwr = ipw.HTML("<p>No output phonon data found for this process.</p>")
 
-        # 3: download of data options
+        # 3. Density of States Panel
+        if dos_node:
+            dos_vwr = PlotWidget(data_series=[density], x_values=[energy], x_label=energy_unit, y_label=dos_unit)
+        else:
+            dos_vwr = ipw.HTML("<p>No output density of states data found for this process.</p>")
+
+        # 4: download of data options
         self.download_input_widget = ipw.HBox()
         self.download_options_widget = DownloadOptionsWidget(self.result_model)
         self.download_input_widget.children = [self.download_options_widget]
         
         # Result tabs
-        tabs = ipw.Tab(children=[structure_vwr, phonon_vwr, self.download_input_widget])
+        tabs = ipw.Tab(children=[structure_vwr, phonon_vwr, dos_vwr, self.download_input_widget])
         tabs.set_title(0, "Resulting Structure")
         tabs.set_title(1, "Phonon Dispersion")
-        tabs.set_title(2, "Download Options")
+        tabs.set_title(2, "Density of States")
+        tabs.set_title(3, "Download Options")
 
         self.children = [
             ipw.HTML(f"<h4>Results for Process: {self.result_model.process_uuid}</h4>"),

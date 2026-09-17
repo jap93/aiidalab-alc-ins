@@ -329,6 +329,7 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
 
     def _on_file_upload(self, change=None):
         """When file upload button is pressed."""
+        print(f"data type: {self.model.data_type}")
         if self.model.has_file:
             
             if self.model.data_type == "phonopy":
@@ -336,16 +337,15 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
                 self.model.force_constants_file = self._phonopy_to_single_file_data(
                     phonopy_data
                 )
-                
-
-                
-            
                 self._update_children()
-            if self.model.data_type == "castep":
+            else:
+            #if self.model.data_type == "castep":
                 print(f"Force constants file uploaded from castep: {self.model.force_constants_file.filename}")
                 #print(f"self.model.force_constants_file.content {self.model.force_constants_file.content}")
                 #self.model.force_constants_file = read_force_constants_from_castep(self.model.force_constants_file.filename)
-                #self.model.force_constants_file = ForceConstants.from_castep(self.model.force_constants_file.filename)
+                from euphonic import ForceConstants
+                self.model.force_constants_file = ForceConstants.from_castep(self.model.force_constants_file.filename)
+                print(f"Force constants data built from castep: {self.model.force_constants_file}")
                 self._update_children()
         return
 
@@ -368,11 +368,72 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
                     phonopy_data
                 )
                 print(f"force constants data built from phonopy: {self.model.force_constants_data}")
-            self.submit_btn.description = "Submitted Force Constants"
-            self.model.submitted = True
+
+                self.submit_btn.description = "Submitted Force Constants"
+                self.model.submitted = True
+        
+            elif self.model.data_type == "castep" and self.model.force_constants_file:
+                filename = self.model.force_constants_file.filename or "force_constants.castep_bin"
+                #content = self.model.force_constants_file.get_content()
+                #self.model.force_constants_data = self._castep_bin_to_force_constants_data(
+                #    content, filename=filename
+                #)
+                #print(f"force constants data built from castep: {self.model.force_constants_data}")
+                self.submit_btn.description = "Submitted Force Constants"
+                self.model.submitted = True
         else:
             self.model.submitted = False
         return
+
+    def _castep_bin_to_force_constants_data(
+        self, castep_data: bytes | str | Path, filename: str = "force_constants.castep_bin"
+    ) -> ForceConstantsData:
+        """Convert a CASTEP force-constants binary file into a ForceConstantsData node."""
+        if castep_data is None:
+            raise ValueError("CASTEP force-constants data is empty.")
+
+        if isinstance(castep_data, Path):
+            source_path = Path(castep_data)
+            filename = source_path.name
+            content = source_path.read_bytes()
+        elif isinstance(castep_data, str):
+            content = castep_data.encode("utf-8")
+        else:
+            content = bytes(castep_data)
+
+        if not content:
+            raise ValueError("CASTEP force-constants file is empty.")
+
+        with TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir) / filename
+            tmp_path.write_bytes(content)
+
+            factory = getattr(ForceConstantsData, "from_castep", None)
+            if callable(factory):
+                try:
+                    return factory(path=tmpdir, summary_name=tmp_path.name)
+                except TypeError:
+                    try:
+                        return factory(str(tmp_path))
+                    except TypeError:
+                        pass
+
+            try:
+                from euphonic import ForceConstants
+
+                if hasattr(ForceConstants, "from_castep"):
+                    force_constants = ForceConstants.from_castep(str(tmp_path))
+                    return ForceConstantsData(force_constants)
+                if hasattr(ForceConstants, "from_file"):
+                    force_constants = ForceConstants.from_file(str(tmp_path))
+                    return ForceConstantsData(force_constants)
+            except Exception:
+                pass
+
+        raise ValueError(
+            "Unable to build ForceConstantsData from the supplied CASTEP force-constants file. "
+            "Install euphonic or provide a CASTEP-compatible importer on ForceConstantsData."
+        )
 
     def _phonpopy_to_structure_data(
         self, phonopy_data: bytes | str | dict
