@@ -38,7 +38,7 @@ def get_app_dir() -> pathlib.Path:
         The path to the root AiiDAlab application directory.
     """
     return (
-        pathlib.Path(getenv("AIIDALAB_APPS", getenv("HOME", "") + "/apps/")) / "aiidalab-mlip/"
+        pathlib.Path(getenv("AIIDALAB_APPS", getenv("HOME", "") + "/apps/")) / "aiidalab-alc-ins/"
     )
 
 
