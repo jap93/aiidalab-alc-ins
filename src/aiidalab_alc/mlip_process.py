@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 from typing import TYPE_CHECKING
 
 from ase import Atoms
@@ -16,7 +17,7 @@ from aiida.orm import Dict, load_code
 from aiida_mlip.data.model import ModelData
 from aiida.orm import StructureData
 from aiida.orm import load_code, load_node
-from aiida.orm import Str, Float, Bool, Int, BandsData, KpointsData
+from aiida.orm import Str, Float, Bool, Int, BandsData, KpointsData, XyData
 from aiida.plugins import CalculationFactory
 from aiida_workgraph import WorkGraph
 
@@ -128,7 +129,7 @@ class MLIPProcess:
         "device": Str(device),
         "supercell": Str(supercell),
         "displacement": Float(0.01),
-        "nqpoints": Int(51),
+        "n_qpoints": Int(51),
         "dos": Bool(True),
         "pdos": Bool(True),
         "bands": Bool(True),
@@ -152,6 +153,7 @@ class MLIPProcess:
         opt_struct = gm_calc.outputs.final_structure
 
         phononCalc = CalculationFactory("mlip.ph")
+        #print("phonon inputs", inputs_phon)
 
         ph_calc = wg.add_task(
         phononCalc,
@@ -185,11 +187,13 @@ class MLIPProcess:
         with lzma.open('bands.yml.xz', mode="rt", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
-        self.model.results_model.final_structure = StructureData(ase=self.dict_to_ase_atoms(wg.outputs.results.value.get_dict()))
-        self.model.results_model.phonon_band_structure = self._clean_band_structure_data(data)
-        self.model.results_model.phonon_dos = wg.tasks.ph_calc.outputs.dos.value.get_content()
-        self.model.results_model.phonon_pdos = wg.tasks.ph_calc.outputs.pdos.value.get_content()
-        self.model.results_model.phonopy = wg.tasks.ph_calc.outputs.results_dict.value.get_dict()
+        self.results_model.final_structure = StructureData(ase=self.dict_to_ase_atoms(wg.outputs.results.value.get_dict()))
+        self.results_model.phonon_band_structure = self._clean_band_structure_data(data)
+        self.results_model.phonon_dos = self._dos_to_xydata(
+            wg.tasks.ph_calc.outputs.dos.value.get_content()
+        )
+        self.results_model.phonon_pdos = wg.tasks.ph_calc.outputs.pdos.value.get_content()
+        self.results_model.phonopy = wg.tasks.ph_calc.outputs.results_dict.value.get_dict()
         return
     
     def _phonopy_to_bandsplot(self, phonopy_data):
@@ -320,7 +324,31 @@ class MLIPProcess:
             bands_data.labels = labels
 
         return bands_data
-    
+
+    def _dos_to_xydata(self, dos):
+        """Convert MLIP phonon DOS text output to an AiiDA XyData node."""
+        if isinstance(dos, bytes):
+            dos = dos.decode()
+
+        rows = []
+        for line in io.StringIO(dos):
+            values = line.split()
+            if len(values) < 2:
+                continue
+            try:
+                rows.append((float(values[0]), float(values[1])))
+            except ValueError:
+                continue
+
+        if not rows:
+            raise ValueError("DOS output does not contain numeric x/y data")
+
+        data = np.asarray(rows, dtype=float)
+        xydata = XyData()
+        xydata.set_x(data[:, 0], "Energy", "eV")
+        xydata.set_y(data[:, 1], "DOS", "1/eV")
+        return xydata
+
     def dict_to_ase_atoms(self, data: dict) -> Atoms:
         atoms = Atoms(
             numbers=np.asarray(data["numbers"], dtype=int),

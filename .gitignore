@@ -5,6 +5,7 @@
 *.swp
 *.xml
 *.json
+*.yaml
 *.xz
 *.bak
 *.dat
@@ -27,7 +28,7 @@ build/
 dist/
 work/
 work/phonon/
-aiida-mlip-phonon/
+aiida-mlip-phonon
 aiida_pythonjob_ins/
 abinslib/
 pip-wheel-metadata/

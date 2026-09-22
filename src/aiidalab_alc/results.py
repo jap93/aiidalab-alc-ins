@@ -1,9 +1,11 @@
 """Module for defining widgets/models for viewing process progress and results."""
 import io
 import json
+import yaml
 from pathlib import Path
 from typing import cast
 import numpy as np
+import h5py
 
 from aiidalab_alc.data import DataStepModel
 import aiidalab_widgets_base as awb
@@ -25,8 +27,8 @@ from aiidalab_alc.data import DataStepModel
 from aiidalab_alc.common.plots import PlotWidget
 
 #bool8 was depracated in numpy 1.24, but BandsDataViewer still uses it, so alias it to bool_ for compatibility
-if np.__version__ >= "1.24":
-    np.bool8 = bool
+#if np.__version__ >= "1.24":
+#    np.bool8 = bool
 
 class ProcessModel(tl.HasTraits):
     """Model describing an AiiDA process."""
@@ -267,7 +269,7 @@ class DownloadOptionsWidget(ipw.VBox):
             value=False, description="PDOS", indent=True
         )
         self.phonopy_chk = ipw.Checkbox(
-            value=False, description="Phonopy", indent=True
+            value=False, description="Phonopy (with force constants)", indent=True
         )
 
         self.download_btn = ipw.Button(
@@ -316,10 +318,28 @@ class DownloadOptionsWidget(ipw.VBox):
                 f.write(self.model.phonon_pdos)
 
         if self.phonopy_chk.value:
-            json_file = "phonopy_data.json"
-            with open(json_file, "w") as f:
-                json.dump(self.model.phonopy, f, indent=4)
-            print(f"Phonopy data saved to {json_file}")
+            yaml_file = "phonopy_data.yaml"
+            with h5py.File("force_constants.hdf5", "r") as force_constants_file:
+                phonopy_data = dict(self.model.phonopy)
+                force_constants = force_constants_file["force_constants"][:]
+                if force_constants.ndim != 4 or force_constants.shape[2:] != (3, 3):
+                    raise ValueError(
+                        "Force constants must have shape (natom, natom, 3, 3)"
+                    )
+
+                natom = force_constants.shape[0]
+                if force_constants.shape[1] != natom:
+                    raise ValueError("Force constants matrix must be square")
+
+                phonopy_data["force_constants"] = {
+                    "format": "full",
+                    "shape": [natom, natom],
+                    "elements": force_constants.reshape(natom * natom, 3, 3).tolist(),
+                }
+
+            with open(yaml_file, "w") as yaml_handle:
+                yaml.safe_dump(phonopy_data, yaml_handle, sort_keys=False)
+            print(f"Phonopy data saved to {yaml_file}")
 
     def render(self):
         """Render the options widget contents if not already rendered."""
