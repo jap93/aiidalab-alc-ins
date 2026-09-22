@@ -303,7 +303,6 @@ class DownloadOptionsWidget(ipw.VBox):
         # Here you would implement the logic to download the selected results
         print("Selected options for download:", selected_options)
 
-
         if self.bands_chk.value:
             np.savetxt("bands_data.dat", self.model.phonon_band_structure.get_bands())
 
