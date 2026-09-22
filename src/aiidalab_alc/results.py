@@ -291,6 +291,15 @@ class DownloadOptionsWidget(ipw.VBox):
         ]
 
         return
+
+    @staticmethod
+    def _write_xydata(xydata: XyData, filename: str) -> None:
+        """Write an AiiDA XyData node as two whitespace-separated columns."""
+        x_label, x_values, x_unit = xydata.get_x()
+        (y_label, y_values, y_unit), = xydata.get_y()
+        data = np.column_stack((x_values, y_values))
+        header = f"{x_label} ({x_unit})\t{y_label} ({y_unit})"
+        np.savetxt(filename, data, header=header)
     
     def _download_results(self, _):
         """Handle the download button click event. Very basic at the moment, just prints the selected options."""
@@ -300,16 +309,13 @@ class DownloadOptionsWidget(ipw.VBox):
             "pdos": self.pdos_chk.value,
             "phonopy": self.phonopy_chk.value,
         }
-        # Here you would implement the logic to download the selected results
-        print("Selected options for download:", selected_options)
 
         if self.bands_chk.value:
             np.savetxt("bands_data.dat", self.model.phonon_band_structure.get_bands())
 
         if self.dos_chk.value:
             filename = "dos_data.dat"
-            with open(filename, "w") as f:
-                f.write(self.model.phonon_dos)
+            self._write_xydata(self.model.phonon_dos, filename)
 
         if self.pdos_chk.value:
             filename = "pdos_data.dat"
@@ -338,7 +344,6 @@ class DownloadOptionsWidget(ipw.VBox):
 
             with open(yaml_file, "w") as yaml_handle:
                 yaml.safe_dump(phonopy_data, yaml_handle, sort_keys=False)
-            print(f"Phonopy data saved to {yaml_file}")
 
     def render(self):
         """Render the options widget contents if not already rendered."""

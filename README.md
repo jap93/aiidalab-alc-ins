@@ -1,2 +1,2 @@
-# aiidalab-mlip
-AIIDALAB interface to MLIP's
+# aiidalab-alc-ins
+AIIDALAB interface to MLIP's and phonon calculations
