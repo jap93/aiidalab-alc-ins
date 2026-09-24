@@ -27,7 +27,7 @@ class QuickAccessButtons(ipw.HBox):
             icon="plus",
         )
         self.new_calc_link.on_click(
-            partial(open_link_in_new_tab, "../aiidalab-mlip/main.ipynb")
+            partial(open_link_in_new_tab, "../aiidalab-alc-ins/main.ipynb")
         )
 
         self.history_link = ipw.Button(
@@ -38,7 +38,7 @@ class QuickAccessButtons(ipw.HBox):
             icon="history",
         )
         self.history_link.on_click(
-            partial(open_link_in_new_tab, "../aiidalab-mlip/history.ipynb")
+            partial(open_link_in_new_tab, "../aiidalab-alc-ins/history.ipynb")
         )
 
         self.resource_setup_link = ipw.Button(
