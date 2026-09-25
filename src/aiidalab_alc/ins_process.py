@@ -8,11 +8,11 @@ import yaml
 from euphonic import ForceConstants
 
 from aiida.engine import run_get_node
-from aiida.orm import SinglefileData, load_code, load_computer, Computer, InstalledCode
+from aiida.orm import SinglefileData, load_code, load_computer, Computer, InstalledCode, Float, List
 from aiida_pythonjob import PythonJob
 from aiida_pythonjob_ins.data import ForceConstantsData
 from aiida_pythonjob_ins.pythonjobs import prepare_dispersion_inputs, prepare_dos_inputs
-from aiida_pythonjob_ins.workflows import DispersionWorkChain, DosWorkChain
+from aiida_pythonjob_ins.workflows import DispersionWorkChain, DosWorkChain, ToscaFromForceConstantsWorkChain
 from aiida import orm
 from aiida.engine import run_get_node
 from aiida_pythonjob import PythonJob
@@ -129,6 +129,7 @@ class INSProcess:
             print(f"Dispersion process failed with exit status: {bands_node.exit_status}")
             return
 
+        #delete this after testing
         print("results dictionary: ")
         for key, value in bands_results.items():
             print(f"  {key}: {value}")
@@ -138,6 +139,7 @@ class INSProcess:
 
         print(f"Dispersion process finished with UUID: {bands_node.uuid}")
         bands_results["band_structure"].show_mpl()
+        #delete to here
 
         dos_results, dos_node = run_get_node(
             DosWorkChain,
@@ -151,6 +153,7 @@ class INSProcess:
             print(f"DOS process failed with exit status: {dos_node.exit_status}")
             return
 
+        #delete after here in production, just for testing
         import matplotlib.pyplot as plt
 
         dos = dos_results["dos"]
@@ -164,14 +167,53 @@ class INSProcess:
         ax.set_title("NaCl phonon DOS (from Phonopy)")
         fig.tight_layout()
 
-        
+        plt.show()
+        #end delete just for testing
+
+        #INS calculation starts if requested using tosca work chain
+        if self.workflow_model.calculate_resins:
+            
+            ins_results, ins_node = run_get_node(
+                ToscaFromForceConstantsWorkChain,
+                force_constants=force_constants,
+                q_spacing=Float(1.0),
+                spectrum={"energy_spacing": Float(5.0), "detector_angles": List(list=[135.0])},
+                code=code,
+            )
+
+            if ins_node.exit_status != 0:
+                print(f"INS process failed with exit status: {ins_node.exit_status}")
+                return
+
+            print(f"INS process finished with UUID: {ins_node.uuid}")
+            print("results dictionary: ")
+            for key, value in ins_results.items():
+                print(f"  {key}: {value}")
+
+            spectrum = ins_results["spectrum"]
+            print(f"INS spectrum type: {type(spectrum)}")
+            
+            dos = ins_results["spectrum"]
+            _, energy, energy_unit = dos.get_x()
+            ((_, density, dos_unit),) = dos.get_y()
+            
+            fig, ax = plt.subplots()
+            ax.plot(energy, density)
+            ax.set_xlabel(f"Energy ({energy_unit})")
+            ax.set_ylabel(f"Density of states ({dos_unit})")
+            ax.set_title("NaCl phonon DOS (from Phonopy)")
+            fig.tight_layout()
+            plt.show()
+    
+        #keep the necessary data in the results model for later use
         self.results_model.process_uuid = bands_node.uuid
         self.results_model.final_structure = structure
         self.results_model.phonon_band_structure = bands_results["band_structure"]
         self.results_model.phonon_dos = dos_results["dos"]
         self.results_model.phonon_pdos = ""
+        if self.workflow_model.calculate_resins:
+            self.results_model.tosca_spectrum = ins_results["spectrum"]
         
-
     def _dict_to_force_constants_data(self, data : Dict):
         """Build a ForceConstantsData node from supported input types."""
         if isinstance(data, ForceConstantsData):

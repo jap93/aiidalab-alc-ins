@@ -523,13 +523,14 @@ class INSOptionsWidget(ipw.VBox):
         )
         tl.link((self.energy_spacing_input, "value"), (self.model, "ins_energy_spacing"))
         self.calculate_band_structure_chk = ipw.Checkbox(
-            value=True, description="band structure calculation", indent=True
+            value=True, description="band structure calculation", indent=True,
+            disabled=True
         )
-        self.calculate_ins_chk = ipw.Checkbox(
-            value=False, description="Calculate INS", indent=True
-        )
+        #self.calculate_ins_chk = ipw.Checkbox(
+        #    value=False, description="Calculate INS", indent=True
+        #)
         self.calculate_resins_chk = ipw.Checkbox(
-            value=False, description="Calculate RESINS", indent=True
+            value=False, description="Calculate RESINS/TOSCA spectrum", indent=True
         )
 
         self.submit_btn = ipw.Button(
@@ -545,8 +546,8 @@ class INSOptionsWidget(ipw.VBox):
         self.model.observe(self._update_inputs, names="use_ins_spacing")
         self._update_inputs()
 
-        tl.link((self.calculate_band_structure_chk, "value"), (self.model, "calculate_band_structure"))
-        tl.link((self.calculate_ins_chk, "value"), (self.model, "calculate_ins"))
+        #tl.link((self.calculate_band_structure_chk, "value"), (self.model, "calculate_band_structure"))
+        #tl.link((self.calculate_ins_chk, "value"), (self.model, "calculate_ins"))
         tl.link((self.calculate_resins_chk, "value"), (self.model, "calculate_resins"))
 
         return
@@ -569,7 +570,7 @@ class INSOptionsWidget(ipw.VBox):
             self.x_axis_input.disabled = True
             self.y_axis_input.disabled = True       
             self.z_axis_input.disabled = True
-            self.calculate_ins_chk.disabled = True
+            #self.calculate_ins_chk.disabled = True
             self.calculate_resins_chk.disabled = True
             self.model.submitted = True
             return
@@ -585,7 +586,7 @@ class INSOptionsWidget(ipw.VBox):
                 self.temperature_input,
                 self.energy_spacing_input,
                 self.calculate_band_structure_chk,
-                self.calculate_ins_chk,
+                #self.calculate_ins_chk,
                 self.calculate_resins_chk,
                 self.submit_btn,
             ]
@@ -599,7 +600,7 @@ class INSOptionsWidget(ipw.VBox):
                 self.temperature_input,
                 self.energy_spacing_input,
                 self.calculate_band_structure_chk,
-                self.calculate_ins_chk,
+                #self.calculate_ins_chk,
                 self.calculate_resins_chk,
                 self.submit_btn,
             ]

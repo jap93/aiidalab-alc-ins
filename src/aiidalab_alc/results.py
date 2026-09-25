@@ -70,6 +70,7 @@ class ResultsModel(ProcessModel):
     phonon_dos = tl.Instance(XyData, allow_none=True)
     phonon_pdos = tl.Unicode("", allow_none=True)
     phonopy = tl.Dict({}, allow_none=True)
+    tosca_spectrum = tl.Instance(XyData, allow_none=True)
 
 class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     """Wizard for viewing process progress and results."""
@@ -146,6 +147,10 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         ((_, density, dos_unit),) = dos_node.get_y()
         pdos_node = self.result_model.phonon_pdos
         #dos = self._create_density_of_states_data(dos_node, pdos_node)
+        if self.result_model.tosca_spectrum:
+            spectrum_node = self.result_model.tosca_spectrum
+            _, spectrum_energy, spectrum_energy_unit = spectrum_node.get_x()
+            ((_, spectrum, spectrum_unit),) = spectrum_node.get_y()
         
         # 1. Structure Panel
         if structure_node:
@@ -165,17 +170,23 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         else:
             dos_vwr = ipw.HTML("<p>No output density of states data found for this process.</p>")
 
+        if spectrum_node:
+            spectrum_vwr = PlotWidget(data_series=[spectrum], x_values=[spectrum_energy], x_label=spectrum_energy_unit, y_label=spectrum_unit)
+        else:
+            spectrum_vwr = ipw.HTML("<p>No output TOSCA spectrum data found for this process.</p>")
+
         # 4: download of data options
         self.download_input_widget = ipw.HBox()
         self.download_options_widget = DownloadOptionsWidget(self.result_model)
         self.download_input_widget.children = [self.download_options_widget]
         
         # Result tabs
-        tabs = ipw.Tab(children=[structure_vwr, phonon_vwr, dos_vwr, self.download_input_widget])
+        tabs = ipw.Tab(children=[structure_vwr, phonon_vwr, dos_vwr, spectrum_vwr, self.download_input_widget])
         tabs.set_title(0, "Resulting Structure")
         tabs.set_title(1, "Phonon Dispersion")
         tabs.set_title(2, "Density of States")
-        tabs.set_title(3, "Download Options")
+        tabs.set_title(3, "TOSCA Spectrum")
+        tabs.set_title(4, "Download Options")
 
         self.children = [
             ipw.HTML(f"<h4>Results for Process: {self.result_model.process_uuid}</h4>"),
