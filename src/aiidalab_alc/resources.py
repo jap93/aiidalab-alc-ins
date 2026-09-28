@@ -1,9 +1,12 @@
 """Defines the model and view for the resource setup stage."""
 
+import shutil
+
 import aiidalab_widgets_base as awb
 import ipywidgets as ipw
 import traitlets as tl
-from aiida.orm import Code, QueryBuilder
+from aiida.common.exceptions import NotExistent
+from aiida.orm import Code, InstalledCode, QueryBuilder, load_code, load_computer
 
 from aiidalab_alc.utils import test_resource_import
 
@@ -170,8 +173,10 @@ class ResourceSetupBox(ipw.VBox):
         )
         self.refresh_codes_button.on_click(self.update_codes)
         self.code_box = ipw.HBox(
-            layout={"width": "100%"}, children=[self.code, self.refresh_codes_button]
+            layout={"width": "100%"},
+            children=[self.code, self.refresh_codes_button],
         )
+        self.code_status = ipw.HTML(layout={"width": "100%"})
         self.update_codes()
 
         tl.link((self.code, "value"), (self.model, "code_name"))
@@ -222,11 +227,13 @@ class ResourceSetupBox(ipw.VBox):
 
         self.children = [
             self.code_box,
+            self.code_status,
             self.device_dropdown,
             self.ncpus_input,
             self.label,
             self.description,
         ]
+        self.create_janus_code()
 
     def update_codes(self, _=None) -> None:
         """Update the list of available codes."""
@@ -239,6 +246,41 @@ class ResourceSetupBox(ipw.VBox):
             self.code.value = code_names[0]
         else:
             self.code.value = "No codes are available. Please add a code to AiiDA."
+        return
+
+    def create_janus_code(self, _=None) -> None:
+        """Create the Janus installed code on the localhost computer."""
+        executable = shutil.which("janus")
+        if executable is None:
+            self.code_status.value = (
+                "<span style='color:red;'>Janus executable was not found on PATH.</span>"
+            )
+            return
+
+        try:
+            computer = load_computer("localhost")
+        except NotExistent:
+            self.code_status.value = (
+                "<span style='color:red;'>AiiDA computer 'localhost' is not configured.</span>"
+            )
+            return
+
+        try:
+            load_code("janus@localhost")
+        except NotExistent:
+            InstalledCode(
+                computer=computer,
+                label="janus",
+                default_calc_job_plugin="janus.janus",
+                filepath_executable=executable,
+            ).store()
+            status = "Created Janus code on localhost."
+        else:
+            status = "Janus code on localhost already exists."
+
+        self.update_codes()
+        self.code.value = "janus"
+        self.code_status.value = f"<span style='color:green;'>{status}</span>"
         return
     
     def _update_device(self, _) -> None:
