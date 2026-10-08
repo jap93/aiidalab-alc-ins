@@ -23,6 +23,7 @@ from aiida.orm import (
     load_node,
 )
 from aiidalab_widgets_base.viewers import BandsDataViewer
+from aiidalab_alc.common.vib_modes import VibrationalModesViewWidget
 from aiidalab_alc.data import DataStepModel
 from aiidalab_alc.common.plots import PlotWidget
 
@@ -160,7 +161,8 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
 
         # 2. Phonon Dispersion Panel
         if bands_node:
-            phonon_vwr = BandsDataViewer(bands_node, units = "eV", downloadable=True)
+            #phonon_vwr = BandsDataViewer(bands_node, units = "eV", downloadable=True)
+            phonon_vwr = VibrationalModesViewWidget(bands_node)
         else:
             phonon_vwr = ipw.HTML("<p>No output phonon data found for this process.</p>")
 

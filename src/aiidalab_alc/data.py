@@ -118,7 +118,7 @@ class DataWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         )
 
         accordion = ipw.Accordion(
-            children=[structure_panel, force_constants_panel],
+            children=[structure_panel, force_constants_panel, ],
             selected_index=None,
         )
         accordion.set_title(0, "Structure")
