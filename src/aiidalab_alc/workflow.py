@@ -5,7 +5,8 @@ import ipywidgets as ipw
 import traitlets as tl
 from aiida.orm import SinglefileData
 
-from aiidalab_alc.common.file_handling import FileUploadWidget, FilenameSelector, create_filename_selector
+from aiidalab_alc.common.file_handling import FileUploadWidget
+from aiidalab_alc.common.file_selector import FilenameSelector, create_filename_selector
 from aiidalab_alc.data import DataStepModel
 
 class WorkflowCalculationModel(tl.HasTraits):
@@ -530,7 +531,7 @@ class INSOptionsWidget(ipw.VBox):
         #    value=False, description="Calculate INS", indent=True
         #)
         self.calculate_resins_chk = ipw.Checkbox(
-            value=False, description="Calculate RESINS/TOSCA spectrum", indent=True
+            value=False, description="Calculate RESINS/TOSCA ", indent=True
         )
 
         self.submit_btn = ipw.Button(

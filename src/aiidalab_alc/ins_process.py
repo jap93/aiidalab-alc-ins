@@ -213,6 +213,8 @@ class INSProcess:
         self.results_model.phonon_pdos = ""
         if self.workflow_model.calculate_resins:
             self.results_model.tosca_spectrum = ins_results["spectrum"]
+        else:
+            self.results_model.tosca_spectrum = None
         
     def _dict_to_force_constants_data(self, data : Dict):
         """Build a ForceConstantsData node from supported input types."""

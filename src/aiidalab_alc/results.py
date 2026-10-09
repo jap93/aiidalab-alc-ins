@@ -152,6 +152,12 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             spectrum_node = self.result_model.tosca_spectrum
             _, spectrum_energy, spectrum_energy_unit = spectrum_node.get_x()
             ((_, spectrum, spectrum_unit),) = spectrum_node.get_y()
+        else:
+            spectrum_node = None
+            spectrum_energy = None
+            spectrum_energy_unit = None
+            spectrum = None
+            spectrum_unit = None
         
         # 1. Structure Panel
         if structure_node:
