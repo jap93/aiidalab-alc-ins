@@ -40,6 +40,8 @@ class WorkflowCalculationModel(tl.HasTraits):
     ins_spacing = tl.Float(0.1).tag(sync=True)
     ins_temperature = tl.Float(300.0).tag(sync=True)
     ins_energy_spacing = tl.Float(1.0).tag(sync=True)
+    ins_resins_qspacing = tl.Float(1.0).tag(sync=True)
+    ins_resins_energy_spacing = tl.Float(5.0).tag(sync=True)
 
     calculate_band_structure = tl.Bool(True).tag(sync=True)
     calculate_ins = tl.Bool(False).tag(sync=True)
@@ -493,12 +495,36 @@ class INSOptionsWidget(ipw.VBox):
             min=0.0001,
             max=1,
             step=0.001,
-            description=" Spacing:",
+            description=" q-spacing:",
             style=style,
             disabled=False,
             layout=ipw.Layout(width="80%"),
         )
         tl.link((self.points_input, "value"), (self.model, "ins_spacing"))
+
+        self.resins_qspacing_input = ipw.BoundedFloatText(
+            value=self.model.ins_resins_qspacing,
+            min=0.0001,
+            max=1,
+            step=0.01,
+            description="q-spacing RESINS/TOSCA:",
+            style=style,
+            disabled=False,
+            layout=ipw.Layout(width="80%"),
+        )
+        tl.link((self.resins_qspacing_input, "value"), (self.model, "ins_resins_qspacing"))
+
+        self.resins_energy_spacing_input = ipw.BoundedFloatText(
+            value=self.model.ins_resins_energy_spacing,
+            min=0.0001,
+            max=10,
+            step=1,
+            description="Energy Spacing RESINS/TOSCA:",
+            style=style,
+            disabled=False,
+            layout=ipw.Layout(width="80%"),
+        )
+        tl.link((self.resins_energy_spacing_input, "value"), (self.model, "ins_resins_energy_spacing"))
 
         self.temperature_input = ipw.BoundedFloatText(
             value=self.model.ins_temperature,
@@ -568,6 +594,8 @@ class INSOptionsWidget(ipw.VBox):
             self.energy_spacing_input.disabled = True
             self.temperature_input.disabled = True
             self.points_input.disabled = True
+            self.resins_qspacing_input.disabled = True
+            self.resins_energy_spacing_input.disabled = True
             self.x_axis_input.disabled = True
             self.y_axis_input.disabled = True       
             self.z_axis_input.disabled = True
@@ -586,6 +614,8 @@ class INSOptionsWidget(ipw.VBox):
                 self.points_input, 
                 self.temperature_input,
                 self.energy_spacing_input,
+                self.resins_qspacing_input,
+                self.resins_energy_spacing_input,
                 self.calculate_band_structure_chk,
                 #self.calculate_ins_chk,
                 self.calculate_resins_chk,

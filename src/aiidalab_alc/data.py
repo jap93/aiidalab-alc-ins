@@ -154,7 +154,6 @@ class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         self.tabs = ipw.Tab()
 
         # upload file
-        self.tabs.set_title(0, "Upload File")
         self.file_input_widget = ipw.VBox()
         self.file_uploader = FileUploadWidget(description="Structure file: ")
         self.file_input_widget.children = [
@@ -163,7 +162,6 @@ class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         ipw.dlink((self.file_uploader, "file"), (self.model, "structure_file"))
 
         # AiiDA database
-        self.tabs.set_title(1, "AiiDA Database")
         self.database_widget = AiiDADatabaseWidget(
             title="AiiDA Database",
             query=[
@@ -173,6 +171,9 @@ class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         ipw.dlink((self.database_widget, "data_object"), (self.model, "structure_file"))
 
         self.tabs.children = [self.file_input_widget, self.database_widget]
+
+        self.tabs.set_title(0, "Upload File")
+        self.tabs.set_title(1, "AiiDA Database")
 
         self.model.observe(self._on_file_upload, "structure_file")
 
@@ -276,7 +277,6 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         self.tabs = ipw.Tab()
 
         # upload file
-        self.tabs.set_title(0, "Upload File")
         self.file_input_widget = ipw.VBox()
         self.input_radio_btn = DataInputWidget(model=self.model)
         self.input_radio_btn.render()
@@ -288,7 +288,6 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         ipw.dlink((self.file_uploader, "file"), (self.model, "force_constants_file"))
 
         # AiiDA database
-        self.tabs.set_title(1, "AiiDA Database")
         self.database_widget = AiiDADatabaseWidget(
             title="AiiDA Database",
             query=[
@@ -298,6 +297,8 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         ipw.dlink((self.database_widget, "data_object"), (self.model, "force_constants_file"))
 
         self.tabs.children = [self.file_input_widget, self.database_widget]
+        self.tabs.set_title(0, "Upload File")
+        self.tabs.set_title(1, "AiiDA Database")
 
         self.model.observe(self._on_file_upload, "force_constants_file")
 

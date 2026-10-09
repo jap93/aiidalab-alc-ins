@@ -22,7 +22,7 @@ from aiida.orm import (
     XyData,
     load_node,
 )
-from aiidalab_widgets_base.viewers import BandsDataViewer
+#from aiidalab_widgets_base.viewers import BandsDataViewer
 from aiidalab_alc.common.vib_modes import VibrationalModesViewWidget
 from aiidalab_alc.data import DataStepModel
 from aiidalab_alc.common.plots import PlotWidget

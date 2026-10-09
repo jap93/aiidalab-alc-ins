@@ -112,7 +112,7 @@ class INSProcess:
 
         spacing = float(self.workflow_model.ins_spacing)
         energy_spacing = float(self.workflow_model.ins_energy_spacing)
-
+        print(f"Submitting INS workflow with spacing: {spacing}, energy spacing: {energy_spacing}")
         #dispersion_inputs = prepare_dispersion_inputs(
         #    force_constants,
         #    q_spacing=spacing,
@@ -130,11 +130,11 @@ class INSProcess:
             return
 
         #delete this after testing
-        #print("results dictionary: ")
-        #for key, value in bands_results.items():
-        #    print(f"  {key}: {value}")
+        print("results dictionary: ")
+        for key, value in bands_results.items():
+            print(f"  {key}: {value}")
 
-        #bands_results["band_structure"].show_mpl()
+        bands_results["band_structure"].show_mpl()
         #delete to here
 
         dos_results, dos_node = run_get_node(
@@ -149,9 +149,20 @@ class INSProcess:
             print(f"DOS process failed with exit status: {dos_node.exit_status}")
             return
 
-        #dos = dos_results["dos"]
-        #_, energy, energy_unit = dos.get_x()
-        #((_, density, dos_unit),) = dos.get_y()
+        import matplotlib.pyplot as plt
+
+        dos = dos_results["dos"]
+        _, energy, energy_unit = dos.get_x()
+        ((_, density, dos_unit),) = dos.get_y()
+
+        fig, ax = plt.subplots()
+        ax.plot(energy, density)
+        ax.set_xlabel(f"Energy ({energy_unit})")
+        ax.set_ylabel(f"Density of states ({dos_unit})")
+        ax.set_title("NaCl phonon DOS (from Phonopy)")
+        fig.tight_layout()
+
+        plt.show()
 
         #INS calculation starts if requested using tosca work chain
         if self.workflow_model.calculate_resins:
@@ -159,8 +170,8 @@ class INSProcess:
             ins_results, ins_node = run_get_node(
                 ToscaFromForceConstantsWorkChain,
                 force_constants=force_constants,
-                q_spacing=Float(spacing),
-                spectrum={"energy_spacing": Float(energy_spacing), "detector_angles": List(list=[135.0])},
+                q_spacing=Float(1.0),
+                spectrum={"energy_spacing": Float(5.0), "detector_angles": List(list=[135.0])},
                 code=code,
             )
 
@@ -168,16 +179,24 @@ class INSProcess:
                 print(f"INS process failed with exit status: {ins_node.exit_status}")
                 return
 
-            #print(f"INS process finished with UUID: {ins_node.uuid}")
-            #print("results dictionary: ")
-            #for key, value in ins_results.items():
-            #    print(f"  {key}: {value}")
+            print(f"INS process finished with UUID: {ins_node.uuid}")
+            print("results dictionary: ")
+            for key, value in ins_results.items():
+                print(f"  {key}: {value}")
 
-            #spectrum = ins_results["spectrum"]
-            
-            #dos = ins_results["spectrum"]
-           # _, energy, energy_unit = dos.get_x()
-            #((_, density, dos_unit),) = dos.get_y()
+            spectrum = ins_results["spectrum"]
+            print(f"INS spectrum type: {type(spectrum)}")
+            dos = ins_results["spectrum"]
+            _, energy, energy_unit = dos.get_x()
+            ((_, density, dos_unit),) = dos.get_y()
+
+            fig, ax = plt.subplots()
+            ax.plot(energy, density)
+            ax.set_xlabel(f"Energy ({energy_unit})")
+            ax.set_ylabel(f"Density of states ({dos_unit})")
+            ax.set_title("NaCl phonon DOS (from Phonopy)")
+            fig.tight_layout()
+            plt.show()
     
         #keep the necessary data in the results model for later use
         self.results_model.process_uuid = bands_node.uuid
