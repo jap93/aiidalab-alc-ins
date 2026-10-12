@@ -278,6 +278,17 @@ class DownloadOptionsWidget(ipw.VBox):
         self.rendered = False
 
         style = {'description_width': 'initial'}
+
+        self.download_btn = ipw.Button(
+                    description="Download Results",
+                    disabled=False,
+                    button_style="success",
+                    tooltip="Download the selected results",
+                    icon="download",
+                    layout={"margin": "auto", "width": "60%"},
+                )
+        self.download_btn.on_click(self._download_results)
+        
         self.bands_chk = ipw.Checkbox(
             value=False, description="Bands", indent=True
         )
@@ -291,23 +302,26 @@ class DownloadOptionsWidget(ipw.VBox):
             value=False, description="Phonopy (with force constants)", indent=True
         )
 
-        self.download_btn = ipw.Button(
-            description="Download Results",
-            disabled=False,
-            button_style="success",
-            tooltip="Download the selected results",
-            icon="download",
-            layout={"margin": "auto", "width": "60%"},
-        )
-        self.download_btn.on_click(self._download_results)
-
-        self.children = [
-            self.bands_chk,
-            self.dos_chk,
-            self.pdos_chk,
-            self.phonopy_chk,
-            self.download_btn,
-        ]
+        if self.model.tosca_spectrum:
+            self.tosca_chk = ipw.Checkbox(
+                value=False, description="TOSCA Spectrum", indent=True
+            )
+            self.children = [
+                self.bands_chk,
+                self.dos_chk,
+                self.pdos_chk,
+                self.phonopy_chk,
+                self.tosca_chk,
+                self.download_btn,
+            ]
+        else:
+            self.children = [
+                self.bands_chk,
+                self.dos_chk,
+                self.pdos_chk,
+                self.phonopy_chk,
+                self.download_btn,
+            ]
 
         return
 
@@ -363,6 +377,10 @@ class DownloadOptionsWidget(ipw.VBox):
 
             with open(yaml_file, "w") as yaml_handle:
                 yaml.safe_dump(phonopy_data, yaml_handle, sort_keys=False)
+
+        if self.model.tosca_spectrum and self.tosca_chk.value:
+            filename = "ins_spectrum.dat"
+            self._write_xydata(self.model.tosca_spectrum, filename)
 
     def render(self):
         """Render the options widget contents if not already rendered."""
