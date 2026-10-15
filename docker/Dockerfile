@@ -11,7 +11,7 @@ USER root
 COPY . /home/jovyan/apps/aiidalab-alc-ins
 RUN ls -l /home/jovyan/apps/aiidalab-alc-ins
 RUN pip install /home/jovyan/apps/aiidalab-alc-ins --no-cache-dir --no-user
-RUN pip install -e /home/jovyan/apps/aiidalab-alc-ins/aiida-mlip-phonon --no-cache-dir --no-user
+RUN pip install git+https://github.com/jap93/aiida-mlip-phonon.git --no-cache-dir --no-user
 # mace-torch takes a very long time to download and produces a massive (>10Gn) image. It is possibly
 # better to open a terminal and download there.
 #RUN pip install mace-torch --no-cache-dir --no-user

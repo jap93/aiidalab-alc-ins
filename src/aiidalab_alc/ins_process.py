@@ -84,13 +84,13 @@ class INSProcess:
             f"Validating model for INS workflow with data type: "
             f"{self.data_model.has_structure}, {self.data_model.has_file}"
         )
-        print(f"Validating force constants file: {self.data_model.force_constants_file}")
+        print(f"Validating force constants: {self.data_model.has_force_constants}")
         if not self.data_model.has_structure and not self.data_model.has_file:
             print("No structure provided for INS calculation.")
             return False
 
         
-        if not self.data_model.force_constants_file:
+        if not self.data_model.has_force_constants:
             print("No force constants provided for INS calculation.")
             return False
 
@@ -102,6 +102,7 @@ class INSProcess:
             return
 
         code = get_python_code()
+        print(f"Using code: {code} for INS workflow submission.")
         structure = self.data_model.structure
         if structure is None:
             structure = self.data_model.structure_file
@@ -130,11 +131,11 @@ class INSProcess:
             return
 
         #delete this after testing
-        print("results dictionary: ")
-        for key, value in bands_results.items():
-            print(f"  {key}: {value}")
+        #print("results dictionary: ")
+        #for key, value in bands_results.items():
+        #    print(f"  {key}: {value}")
 
-        bands_results["band_structure"].show_mpl()
+        #bands_results["band_structure"].show_mpl()
         #delete to here
 
         dos_results, dos_node = run_get_node(
@@ -149,20 +150,20 @@ class INSProcess:
             print(f"DOS process failed with exit status: {dos_node.exit_status}")
             return
 
-        import matplotlib.pyplot as plt
+        #import matplotlib.pyplot as plt
 
-        dos = dos_results["dos"]
-        _, energy, energy_unit = dos.get_x()
-        ((_, density, dos_unit),) = dos.get_y()
+        #dos = dos_results["dos"]
+        #_, energy, energy_unit = dos.get_x()
+        #((_, density, dos_unit),) = dos.get_y()
 
-        fig, ax = plt.subplots()
-        ax.plot(energy, density)
-        ax.set_xlabel(f"Energy ({energy_unit})")
-        ax.set_ylabel(f"Density of states ({dos_unit})")
-        ax.set_title("NaCl phonon DOS (from Phonopy)")
-        fig.tight_layout()
+        #fig, ax = plt.subplots()
+        #ax.plot(energy, density)
+        #ax.set_xlabel(f"Energy ({energy_unit})")
+        #ax.set_ylabel(f"Density of states ({dos_unit})")
+        #ax.set_title("NaCl phonon DOS (from Phonopy)")
+        #fig.tight_layout()
 
-        plt.show()
+        #plt.show()
 
         #INS calculation starts if requested using tosca work chain
         if self.workflow_model.calculate_resins:
@@ -179,24 +180,24 @@ class INSProcess:
                 print(f"INS process failed with exit status: {ins_node.exit_status}")
                 return
 
-            print(f"INS process finished with UUID: {ins_node.uuid}")
-            print("results dictionary: ")
-            for key, value in ins_results.items():
-                print(f"  {key}: {value}")
+            #print(f"INS process finished with UUID: {ins_node.uuid}")
+            #print("results dictionary: ")
+            #for key, value in ins_results.items():
+            #    print(f"  {key}: {value}")
 
-            spectrum = ins_results["spectrum"]
-            print(f"INS spectrum type: {type(spectrum)}")
-            dos = ins_results["spectrum"]
-            _, energy, energy_unit = dos.get_x()
-            ((_, density, dos_unit),) = dos.get_y()
+            #spectrum = ins_results["spectrum"]
+            #print(f"INS spectrum type: {type(spectrum)}")
+            #dos = ins_results["spectrum"]
+            #_, energy, energy_unit = dos.get_x()
+            #((_, density, dos_unit),) = dos.get_y()
 
-            fig, ax = plt.subplots()
-            ax.plot(energy, density)
-            ax.set_xlabel(f"Energy ({energy_unit})")
-            ax.set_ylabel(f"Density of states ({dos_unit})")
-            ax.set_title("NaCl phonon DOS (from Phonopy)")
-            fig.tight_layout()
-            plt.show()
+            #fig, ax = plt.subplots()
+            #ax.plot(energy, density)
+            #ax.set_xlabel(f"Energy ({energy_unit})")
+            #ax.set_ylabel(f"Density of states ({dos_unit})")
+            #ax.set_title("NaCl phonon DOS (from Phonopy)")
+            #fig.tight_layout()
+            #plt.show()
     
         #keep the necessary data in the results model for later use
         self.results_model.process_uuid = bands_node.uuid

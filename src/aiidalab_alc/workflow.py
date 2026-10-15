@@ -32,7 +32,7 @@ class WorkflowCalculationModel(tl.HasTraits):
     number_points = tl.Int(51).tag(sync=True)
 
     #INS parameters
-    use_ins_spacing = tl.Unicode("").tag(sync=True)
+    use_ins_spacing = tl.Unicode("Use spacing").tag(sync=True)
 
     ins_supercell_size_x = tl.Int(2).tag(sync=True)
     ins_supercell_size_y = tl.Int(2).tag(sync=True)
@@ -654,7 +654,7 @@ class INSOptionsWidget(ipw.VBox):
 class INSInputWidget(ipw.VBox):
     """Widget for the data input step."""
 
-    value = tl.Unicode("Use supercell size", allow_none=True)
+    value = tl.Unicode("Use spacing", allow_none=True)
 
     def __init__(self, model: WorkflowCalculationModel, **kwargs):
         """
@@ -686,7 +686,7 @@ class INSInputWidget(ipw.VBox):
 
         self.input_method = ipw.RadioButtons(
             options=["Use supercell size", "Use spacing"],
-            value="Use supercell size",
+            value="Use spacing",
             description="INS options:",
             disabled=False,
         )
