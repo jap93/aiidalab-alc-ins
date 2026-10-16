@@ -7,8 +7,9 @@ USER root
  
 # Install the alc-ux AiiDAlab plugin to the apps folder 
 #RUN pip install git+https://github.com/stfc/alc-ux.git#egg=alc-ux --src ${HOME}/apps
+RUN echo ${PWD} 
 
-COPY . /home/jovyan/apps/aiidalab-alc-ins
+COPY --chown=${NB_UID}:${NB_GID} . /home/jovyan/apps/aiidalab-alc-ins
 RUN ls -l /home/jovyan/apps/aiidalab-alc-ins
 RUN pip install /home/jovyan/apps/aiidalab-alc-ins --no-cache-dir --no-user
 RUN pip install git+https://github.com/jap93/aiida-mlip-phonon.git --no-cache-dir --no-user
@@ -23,3 +24,4 @@ LABEL org.opencontainers.image.source=https://github.com/jap93/aiidalab-alc-ins
 USER ${NB_UID}
 WORKDIR ${HOME}
 
+#

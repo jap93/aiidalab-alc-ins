@@ -299,17 +299,17 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         )
 
         # AiiDA database
-        self.database_widget = AiiDADatabaseWidget(
-            title="AiiDA Database",
-            query=[
-                SinglefileData,
-            ],
-        )
-        ipw.dlink((self.database_widget, "data_object"), (self.model, "force_constants_file"))
+        #self.database_widget = AiiDADatabaseWidget(
+        #    title="AiiDA Database",
+        #    query=[
+        #        SinglefileData,
+        #    ],
+        #)
+        #ipw.dlink((self.database_widget, "data_object"), (self.model, "force_constants_file"))
 
-        self.tabs.children = [self.file_input_widget, self.database_widget]
+        self.tabs.children = [self.file_input_widget, ]
         self.tabs.set_title(0, "Upload File")
-        self.tabs.set_title(1, "AiiDA Database")
+        #self.tabs.set_title(1, "AiiDA Database")
 
         self.model.observe(self._on_file_upload, "force_constants_file")
 
