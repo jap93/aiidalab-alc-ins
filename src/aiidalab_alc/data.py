@@ -373,7 +373,7 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         if self.model.has_force_constants:
             self.file_uploader.disable(True)
             self.castep_selector.disabled = True
-            self.database_widget.disable(True)
+            #self.database_widget.disable(True)
             self.submit_btn.disabled = True
 
             if self.model.data_type == "phonopy" and self.model.force_constants_file:
