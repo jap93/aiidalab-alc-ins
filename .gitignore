@@ -1,4 +1,5 @@
 .venv
+.venv-docs
 *.lock
 *.pyc
 *.swo
@@ -33,3 +34,9 @@ aiida_pythonjob_ins/
 abinslib/
 pip-wheel-metadata/
 .tox/
+
+# Sphinx documentation
+docs/_build/
+docs/_static/alc.svg
+docs/_static/alc-100.png
+docs/api/generated/
