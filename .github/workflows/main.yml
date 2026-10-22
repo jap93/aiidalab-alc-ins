@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install sphinx
+          pip install -r docs/requirements.tx
 
       - name: Build docs
         run: |
