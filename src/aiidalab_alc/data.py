@@ -108,7 +108,8 @@ class DataWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         structure_vwr.render()
 
         # 2. Phonon Force constant Panel
-        fc_vwr = ForceConstantWizardStep(model=self.model)
+        fc_vwr = ForceConstantWizardStep(model=self.model, structure_step=structure_vwr)
+        structure_vwr.force_constants_step = fc_vwr
         fc_vwr.render()
 
         structure_panel = ipw.VBox(
@@ -157,6 +158,7 @@ class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         super().__init__(children=[], **kwargs)
         self.rendered = False
         self.model = model
+        self.force_constants_step = None
 
         self.tabs = ipw.Tab()
 
@@ -213,6 +215,12 @@ class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         ]
         return
 
+    def disable_inputs(self) -> None:
+        """Disable structure inputs after the structure has been submitted."""
+        self.file_uploader.disable(True)
+        self.database_widget.disable(True)
+        self.submit_btn.disabled = True
+
     def _on_file_upload(self, change=None):
         """When file upload button is pressed."""
         if self.model.has_file:
@@ -247,9 +255,9 @@ class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     def submit_structure(self, _):
         """Submit the structure step."""
         if self.model.has_file or self.model.has_structure:
-            self.file_uploader.disable(True)
-            self.database_widget.disable(True)
-            self.submit_btn.disabled = True
+            self.disable_inputs()
+            if self.force_constants_step is not None:
+                self.force_constants_step.disable_inputs()
             self.model.data_type = "ase_mlip"
             self.submit_btn.description = "Submitted"
             self.model.submitted = True
@@ -266,7 +274,12 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     configure force constants to be used in their workflow.
     """
 
-    def __init__(self, model: DataStepModel, **kwargs):
+    def __init__(
+        self,
+        model: DataStepModel,
+        structure_step: StructureWizardStep | None = None,
+        **kwargs,
+    ):
         """
         ForceConstantWizardStep constructor.
 
@@ -280,6 +293,7 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         super().__init__(children=[], **kwargs)
         self.rendered = False
         self.model = model
+        self.structure_step = structure_step
 
         self.tabs = ipw.Tab()
 
@@ -369,14 +383,19 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         """Clear previously parsed data when the uploaded file changes."""
         self.model.force_constants_data = None
 
+    def disable_inputs(self) -> None:
+        """Disable force-constant inputs after a structure is submitted."""
+        self.file_uploader.disable(True)
+        self.castep_selector.disabled = True
+        self.submit_btn.disabled = True
+        self.input_radio_btn._disable()
+
     def submit_force_constants(self, _):
         """Submit the force constants step."""
         if self.model.has_force_constants:
-            self.file_uploader.disable(True)
-            self.castep_selector.disabled = True
-            #self.database_widget.disable(True)
-            self.submit_btn.disabled = True
-            self.input_radio_btn._disable()
+            if self.structure_step is not None:
+                self.structure_step.disable_inputs()
+            self.disable_inputs()
 
             if self.model.data_type == "phonopy" and self.model.force_constants_file:
                 self.model.structure = self._phonpopy_to_structure_data(
