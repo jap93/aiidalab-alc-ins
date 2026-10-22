@@ -134,6 +134,7 @@ class DataWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             accordion,
         ]
 
+
 class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     """
     Wizard for structure selection and manipulation.
@@ -375,6 +376,7 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             self.castep_selector.disabled = True
             #self.database_widget.disable(True)
             self.submit_btn.disabled = True
+            self.input_radio_btn._disable()
 
             if self.model.data_type == "phonopy" and self.model.force_constants_file:
                 self.model.structure = self._phonpopy_to_structure_data(
@@ -592,6 +594,11 @@ class DataInputWidget(ipw.VBox):
             self.input_method,
         ]
         self.rendered = True
+
+    def _disable(self):
+        """Disable the input method radio buttons."""
+        if self.input_method:
+            self.input_method.disabled = True   
 
     
 # %%

@@ -37,11 +37,12 @@ class WorkflowCalculationModel(tl.HasTraits):
     ins_supercell_size_x = tl.Int(2).tag(sync=True)
     ins_supercell_size_y = tl.Int(2).tag(sync=True)
     ins_supercell_size_z = tl.Int(2).tag(sync=True)
-    ins_spacing = tl.Float(0.1).tag(sync=True)
+    ins_spacing = tl.Float(0.05).tag(sync=True)
     ins_temperature = tl.Float(300.0).tag(sync=True)
-    ins_energy_spacing = tl.Float(1.0).tag(sync=True)
-    ins_resins_qspacing = tl.Float(1.0).tag(sync=True)
-    ins_resins_energy_spacing = tl.Float(5.0).tag(sync=True)
+    ins_dos_qspacing = tl.Float(0.1).tag(sync=True)
+    ins_dos_energy_spacing = tl.Float(0.1).tag(sync=True)
+    ins_resins_qspacing = tl.Float(0.5).tag(sync=True)
+    ins_resins_energy_spacing = tl.Float(0.5).tag(sync=True)
 
     calculate_band_structure = tl.Bool(True).tag(sync=True)
     calculate_ins = tl.Bool(False).tag(sync=True)
@@ -250,7 +251,7 @@ class MLIPOptionsWidget(ipw.VBox):
             layout={"width": "50%"},
         )
         self.max_force_text = ipw.BoundedFloatText(
-            value=0.001,
+            value=0.0001,
             min=0,
             step=0.001,
             description="Max force:",
@@ -538,17 +539,29 @@ class INSOptionsWidget(ipw.VBox):
         )
         tl.link((self.temperature_input, "value"), (self.model, "ins_temperature"))
 
-        self.energy_spacing_input = ipw.BoundedFloatText(
-            value=self.model.ins_energy_spacing,
+        self.dos_qspacing_input = ipw.BoundedFloatText(
+            value=self.model.ins_dos_qspacing,
             min=0.0001,
-            max=1000,
-            step=1,
-            description="Energy Spacing for DOS, eV:",
+            max=1,
+            step=0.01,
+            description="q-spacing for DOS:",
             style=style,
             disabled=False,
             layout=ipw.Layout(width="80%"),
         )
-        tl.link((self.energy_spacing_input, "value"), (self.model, "ins_energy_spacing"))
+        tl.link((self.dos_qspacing_input, "value"), (self.model, "ins_dos_qspacing"))
+
+        self.energy_spacing_input = ipw.BoundedFloatText(
+            value=self.model.ins_dos_energy_spacing,
+            min=0.0001,
+            max=1000,
+            step=1,
+            description="Energy Spacing for DOS, meV:",
+            style=style,
+            disabled=False,
+            layout=ipw.Layout(width="80%"),
+        )
+        tl.link((self.energy_spacing_input, "value"), (self.model, "ins_dos_energy_spacing"))
         self.calculate_band_structure_chk = ipw.Checkbox(
             value=True, description="band structure calculation", indent=True,
             disabled=True
@@ -588,12 +601,14 @@ class INSOptionsWidget(ipw.VBox):
             #            <strong>Error:</strong> No MLIP force field file provided.
             #        </div>"""
             #    return
+            self.ins_options._disable
             self.submit_btn.description = "Submitted INS Options"
             self.submit_btn.disabled = True
             self.calculate_band_structure_chk.disabled = True
             self.energy_spacing_input.disabled = True
             self.temperature_input.disabled = True
             self.points_input.disabled = True
+            self.dos_qspacing_input.disabled = True
             self.resins_qspacing_input.disabled = True
             self.resins_energy_spacing_input.disabled = True
             self.x_axis_input.disabled = True
@@ -613,6 +628,7 @@ class INSOptionsWidget(ipw.VBox):
                 self.ins_options, 
                 self.points_input, 
                 self.temperature_input,
+                self.dos_qspacing_input,
                 self.energy_spacing_input,
                 self.resins_qspacing_input,
                 self.resins_energy_spacing_input,
@@ -696,3 +712,8 @@ class INSInputWidget(ipw.VBox):
             self.input_method,
         ]
         self.rendered = True
+
+    def _disable(self):
+        """Disable the input method radio buttons."""
+        if self.input_method:
+            self.input_method.disabled = True

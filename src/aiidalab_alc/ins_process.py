@@ -80,11 +80,7 @@ class INSProcess:
 
     def validate_model(self) -> bool:
         """Validate the required data for the INS workflow."""
-        print(
-            f"Validating model for INS workflow with data type: "
-            f"{self.data_model.has_structure}, {self.data_model.has_file}"
-        )
-        print(f"Validating force constants: {self.data_model.has_force_constants}")
+
         if not self.data_model.has_structure and not self.data_model.has_file:
             print("No structure provided for INS calculation.")
             return False
@@ -102,7 +98,7 @@ class INSProcess:
             return
 
         code = get_python_code()
-        print(f"Using code: {code} for INS workflow submission.")
+        
         structure = self.data_model.structure
         if structure is None:
             structure = self.data_model.structure_file
@@ -112,14 +108,6 @@ class INSProcess:
             raise ValueError("Unable to build ForceConstantsData from the supplied input.")
 
         spacing = float(self.workflow_model.ins_spacing)
-        energy_spacing = float(self.workflow_model.ins_energy_spacing)
-        print(f"Submitting INS workflow with spacing: {spacing}, energy spacing: {energy_spacing}")
-        #dispersion_inputs = prepare_dispersion_inputs(
-        #    force_constants,
-        #    q_spacing=spacing,
-        #    code=code,
-        #)
-
         bands_results, bands_node = run_get_node(
             DispersionWorkChain,
             force_constants=force_constants,
@@ -137,7 +125,8 @@ class INSProcess:
 
         #bands_results["band_structure"].show_mpl()
         #delete to here
-
+        spacing = float(self.workflow_model.ins_dos_qspacing)
+        energy_spacing = float(self.workflow_model.ins_dos_energy_spacing)
         dos_results, dos_node = run_get_node(
             DosWorkChain,
             force_constants=force_constants,
@@ -167,12 +156,13 @@ class INSProcess:
 
         #INS calculation starts if requested using tosca work chain
         if self.workflow_model.calculate_resins:
-            
+            spacing = float(self.workflow_model.ins_resins_qspacing)
+            energy_spacing = float(self.workflow_model.ins_resins_energy_spacing)
             ins_results, ins_node = run_get_node(
                 ToscaFromForceConstantsWorkChain,
                 force_constants=force_constants,
-                q_spacing=Float(1.0),
-                spectrum={"energy_spacing": Float(5.0), "detector_angles": List(list=[135.0])},
+                q_spacing=Float(spacing),
+                spectrum={"energy_spacing": Float(energy_spacing), "detector_angles": List(list=[135.0])},
                 code=code,
             )
 

@@ -75,14 +75,14 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             self.model.default_guide,
         )
 
-        self.submit_btn = ipw.Button(
+        self.model.submit_btn = ipw.Button(
             description="Submit",
             button_style="success",
             tooltip="Submit the calculation",
             icon="check",
             layout={"width": "80%", "margin": "auto"},
         )
-        self.submit_btn.on_click(self._submit)
+        self.model.submit_btn.on_click(self._submit_ins)
 
         self.error_output = ipw.HTML(layout={"margin": "10px auto", "width": "80%"})
 
@@ -92,7 +92,7 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             self.mlips_warning if not self.mlips_installed else ipw.HTML(""),
             ResourceSetupBox(model=self.model),
             self.error_output,
-            self.submit_btn,
+            self.model.submit_btn,
         ]
         return
 
@@ -104,14 +104,13 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         self.rendered = True
         return
 
-    def _submit(self, _=None) -> None:
+    def _submit_ins(self, _=None) -> None:
         """Handle the submission of the AiiDA process."""
         self.error_output.value = ""
-
+        print("now in resources._submit:validation passed, submitted set to True")
         if self.model.validate():
             self.model.submitted = True
-            self.submit_btn.disabled = True
-            self.submit_btn.description = "Submitted"
+            
         else:
             # Capture specific validation errors for the UI
             errors = []
@@ -125,6 +124,7 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
                 <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px;">
                     <strong>Validation Error:</strong> {error_text}
                 </div>"""
+        
         return
 
     def _refresh_widget(self) -> None:
@@ -140,7 +140,7 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             )
         else:
             self.mlips_warning.value = ""
-            self.submit_btn.disabled = False
+            self.model.submit_btn.disabled = False
 
 
 class ResourceSetupBox(ipw.VBox):
