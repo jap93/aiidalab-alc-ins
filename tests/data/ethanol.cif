@@ -1,0 +1,81 @@
+####################################################################### 
+# 
+# This file contains crystal structure data downloaded from the 
+# Cambridge Structural Database (CSD) hosted by the Cambridge 
+# Crystallographic Data Centre (CCDC).
+# 
+# Full information about CCDC data access policies and citation 
+# guidelines are available at http://www.ccdc.cam.ac.uk/access/V1 
+# 
+# Audit and citation data items may have been added by the CCDC. 
+# Please retain this information to preserve the provenance of 
+# this file and to allow appropriate attribution of the data. 
+# 
+#######################################################################
+
+data_DUCKOB
+#This CIF has been generated from an entry in the Cambridge Structural Database
+_database_code_depnum_ccdc_archive 'CCDC 1145801'
+_database_code_CSD               DUCKOB
+loop_
+_citation_id
+_citation_doi
+_citation_year
+1 10.1107/S010876818609804X 1986
+_audit_creation_method           'Created from the CSD'
+_audit_update_record             
+;
+2025-09-02 downloaded from the CCDC.
+;
+_database_code_NBS               567216
+_chemical_formula_moiety         'C4 D10'
+_chemical_name_systematic        Decadeutero-n-butane
+_chemical_absolute_configuration unk
+_diffrn_ambient_temperature      5
+_exptl_crystal_density_diffrn    1.015
+#These two values have been output from a single CSD field.
+_refine_ls_R_factor_gt           0.043
+_refine_ls_wR_factor_gt          0.043
+_diffrn_radiation_probe          neutron
+_diffrn_source                   'neutron radiation'
+_symmetry_cell_setting           monoclinic
+_symmetry_space_group_name_H-M   'P 21/c'
+_symmetry_Int_Tables_number      14
+_space_group_name_Hall           '-P 2ybc'
+loop_
+_symmetry_equiv_pos_site_id
+_symmetry_equiv_pos_as_xyz
+1 x,y,z
+2 -x,1/2+y,1/2-z
+3 -x,-y,-z
+4 x,1/2-y,1/2+z
+_cell_length_a                   4.110(1)
+_cell_length_b                   7.621(2)
+_cell_length_c                   8.097(2)
+_cell_angle_alpha                90
+_cell_angle_beta                 61.397
+_cell_angle_gamma                90
+_cell_volume                     222.665
+_cell_formula_units_Z            2
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+C1 C 0.1217 0.06372 -0.0795
+C2 C -0.0046 0.2548 -0.0238
+D1 D 0.4097 0.0499 -0.1124
+D2 D 0.1095 0.0301 -0.2069
+D3 D 0.1714 0.3458 -0.1340
+D4 D -0.2871 0.2742 0.0020
+D5 D 0.0044 0.2919 0.1036
+C1B C -0.1217 -0.06372 0.0795
+C2B C 0.0046 -0.2548 0.0238
+D3B D -0.1714 -0.3458 0.1340
+D4B D 0.2871 -0.2742 -0.0020
+D5B D -0.0044 -0.2919 -0.1036
+D1B D -0.4097 -0.0499 0.1124
+D2B D -0.1095 -0.0301 0.2069
+
+#END
