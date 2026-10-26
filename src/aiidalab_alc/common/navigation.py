@@ -61,7 +61,7 @@ class QuickAccessButtons(ipw.HBox):
             icon="book",
         )
         self.docs_link.on_click(
-            partial(open_link_in_new_tab, "https://github.com/stfc/alc-ux")
+            partial(open_link_in_new_tab, "https://jap93.github.io/aiidalab-alc-ins/")
         )
 
         children = [
