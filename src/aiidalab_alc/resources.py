@@ -11,13 +11,21 @@ from aiida.orm import Code, InstalledCode, QueryBuilder, load_code, load_compute
 from aiidalab_alc.utils import test_resource_import
 
 
+def _nvidia_container_toolkit_installed() -> bool:
+    """Return whether an NVIDIA Container Toolkit executable is available."""
+    return any(
+        shutil.which(executable) is not None
+        for executable in ("nvidia-container-cli", "nvidia-ctk")
+    )
+
+
 class ComputationalResourcesModel(tl.HasTraits):
     """Model for the resource setup stage."""
 
     code_name = tl.Unicode("").tag(sync=True)
     #code_label = tl.Unicode("").tag(sync=True)
     device_name = tl.Unicode("").tag(sync=True)
-    ncpus = tl.Int(1).tag(sync=True)
+    # ncpus = tl.Int(1).tag(sync=True)
     process_label = tl.Unicode("").tag(sync=True)
     process_description = tl.Unicode("").tag(sync=True)
     submitted = tl.Bool(False).tag(sync=True)
@@ -182,28 +190,28 @@ class ResourceSetupBox(ipw.VBox):
         tl.link((self.code, "value"), (self.model, "code_name"))
 
         #style = {'description_width': 'initial'}
+        
         self.device_dropdown = ipw.Dropdown(
-            options=["cpu", "cuda"],
+            options=["cpu", "cuda"] if _nvidia_container_toolkit_installed() else ["cpu"],
             value = "cpu",
             description="Device:",
             #style=style,
             disabled=False,
             layout=ipw.Layout(width="80%"),
         )
-        self.device_dropdown.observe(self._update_device, names='value')
+        # self.device_dropdown.observe(self._update_device, names='value')
         tl.link((self.device_dropdown, "value"), (self.model, "device_name"))
 
-        self.ncpus_input = ipw.BoundedIntText(
-            value=self.model.ncpus,
-            min=1,
-            max=128,
-            step=1,
-            #style=style,
-            description="No. CPUs:",
-            disabled=False,
-            layout=ipw.Layout(width="80%"),
-        )
-        tl.link((self.ncpus_input, "value"), (self.model, "ncpus"))
+        # self.ncpus_input = ipw.BoundedIntText(
+        #     value=self.model.ncpus,
+        #     min=1,
+        #     max=128,
+        #     step=1,
+        #     description="No. CPUs:",
+        #     disabled=False,
+        #     layout=ipw.Layout(width="80%"),
+        # )
+        # tl.link((self.ncpus_input, "value"), (self.model, "ncpus"))
 
         self.label = ipw.Text(
             value=self.model.process_label,
@@ -229,7 +237,7 @@ class ResourceSetupBox(ipw.VBox):
             self.code_box,
             self.code_status,
             self.device_dropdown,
-            self.ncpus_input,
+            # self.ncpus_input,
             self.label,
             self.description,
         ]
@@ -283,11 +291,10 @@ class ResourceSetupBox(ipw.VBox):
         self.code_status.value = f"<span style='color:green;'>{status}</span>"
         return
     
-    def _update_device(self, _) -> None:
-        """Update the device options."""
-        
-        if self.device_dropdown.value.lower() == "cpu":
-            self.ncpus_input.disabled = False
-        else:
-            self.ncpus_input.disabled = True
+    # def _update_device(self, _) -> None:
+    #     """Update the device options."""
+    #     if self.device_dropdown.value.lower() == "cpu":
+    #         self.ncpus_input.disabled = False
+    #     else:
+    #         self.ncpus_input.disabled = True
             

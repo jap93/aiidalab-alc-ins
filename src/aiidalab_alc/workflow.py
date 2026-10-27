@@ -1,5 +1,7 @@
 """Module defining the MVC for MLIP workflow configuration."""
 
+from importlib.util import find_spec
+
 import aiidalab_widgets_base as awb
 import ipywidgets as ipw
 import traitlets as tl
@@ -8,6 +10,9 @@ from aiida.orm import SinglefileData
 from aiidalab_alc.common.file_handling import FileUploadWidget
 from aiidalab_alc.common.file_selector import FilenameSelector, create_filename_selector
 from aiidalab_alc.data import DataStepModel
+
+DFTD3_AVAILABLE = find_spec("dftd3") is not None
+
 
 class WorkflowCalculationModel(tl.HasTraits):
     """The model for setting up a MLIP workflow."""
@@ -239,9 +244,18 @@ class MLIPOptionsWidget(ipw.VBox):
             disabled=False,
             layout={"width": "50%"},
         )
+
         
         self.enable_dftd3_chk = ipw.Checkbox(
-            value=False, description="Use DFTd3", indent=True
+            value=False,
+            description="Use DFT-D3",
+            disabled=not DFTD3_AVAILABLE,
+            indent=True,
+            tooltip=(
+                "Enable DFT-D3 dispersion correction"
+                if DFTD3_AVAILABLE
+                else "Install the dftd3 module to enable this option"
+            ),
         )
                 
         self.pressure_text = ipw.BoundedFloatText(

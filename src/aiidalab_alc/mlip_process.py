@@ -73,6 +73,7 @@ class MLIPProcess:
         code = load_code(self.resource_model.code_name)
 
         device = self.resource_model.device_name   
+        print("device", device)
 
         model_file = self.workflow_model.force_field
         if not Path(model_file).exists():
@@ -174,7 +175,7 @@ class MLIPProcess:
             print(f"Failed with exit status {wg.process.exit_status}")
 
         self.node = wg.nodes[0]
-        
+
         #force constants are always needed for scattering calculations, so we will always save them
         with wg.nodes[4].outputs['force_constants'].value.open(mode='rb') as source:
             with open('force_constants.hdf5', mode='wb') as target:

@@ -64,6 +64,7 @@ class MainAppModel(tl.HasTraits):
             self._calculating()
             self.process.submit_process()
             self.block_results = False
+            self._finished()
 
             if self.process.node is not None:
                 self.results_model.process_uuid = self.process.node.uuid
