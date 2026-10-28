@@ -1,5 +1,6 @@
 """Define the ALC INS calculation history page."""
 
+from collections.abc import Mapping
 from datetime import datetime
 from html import escape
 
@@ -222,23 +223,33 @@ class HistoryAppView(ipw.VBox):
 
     @staticmethod
     def _links_list(links) -> str:
-        """Format direct provenance links as a compact list."""
-        items = []
+        """Format provenance links, including nodes in nested namespaces."""
+        entries = []
+
+        def add_entries(prefix, value):
+            if isinstance(value, Mapping):
+                for key in value:
+                    label = f"{prefix}.{key}" if prefix else str(key)
+                    add_entries(label, value[key])
+            else:
+                entries.append((prefix, value))
+
         for label in links:
-            linked_node = links[label]
+            add_entries(str(label), links[label])
+
+        items = []
+        for label, linked_node in entries:
             node_type = type(linked_node).__name__
             node_label = getattr(linked_node, "label", "") or ""
+            pk = getattr(linked_node, "pk", None)
+            pk_text = f" (PK {pk})" if pk is not None else ""
             items.append(
                 "<li>"
                 f"<code>{escape(str(label))}</code>: "
-                f"{escape(node_type)} (PK {linked_node.pk})"
+                f"{escape(node_type)}{pk_text}"
                 f"{f' | {escape(node_label)}' if node_label else ''}"
                 "</li>"
             )
-            if len(items) == 12:
-                break
         if not items:
             return "<p>None</p>"
-        remaining = len(links) - len(items)
-        more = f"<li>...and {remaining} more</li>" if remaining > 0 else ""
-        return f"<ul>{''.join(items)}{more}</ul>"
+        return f"<ul>{''.join(items)}</ul>"
