@@ -7,7 +7,7 @@ Docker image, or install the app into an existing AiiDAlab environment.
 Requirements
 ------------
 
-* Python 3.10 (the app targets the ``ghcr.io/stfc/alc-ux/base:py310`` image)
+* Python 3.10 (the app builds the ``ghcr.io/stfc/alc-ux/base:py310`` image)
 * An AiiDA profile with a configured ``localhost`` computer
 * The following AiiDA plugins and libraries:
 
@@ -28,11 +28,9 @@ Using Docker
 
 A ``Dockerfile`` is provided in the ``docker/`` directory. It builds on the
 ALC AiiDAlab base image, installs the required AiiDA plugins, and copies the
-application into ``/home/jovyan/apps/aiidalab-alc-ins``. A start-up script
-(``61_prepare_aiidalab_alc_ins.sh``) installs the app in editable mode when
-the container starts.
+application into ``/home/jovyan/apps/aiidalab-alc-ins``. 
 
-The image must be built from the repository root, because the whole
+The image can be built from the repository root, where the whole
 repository is copied into the image:
 
 .. code-block:: bash
@@ -49,7 +47,7 @@ Then run the container and open the URL printed in the terminal:
 
 .. note::
 
-   ``mace-torch`` is **not** installed in the image by default, because it
+   ``mace-torch`` is **not** installed in the image by default as it
    makes the image very large (>10 GB) and slow to build. Install it from a
    terminal inside the running container:
 
@@ -57,32 +55,4 @@ Then run the container and open the URL printed in the terminal:
 
       pip install mace-torch
 
-Installing into an existing AiiDAlab environment
-------------------------------------------------
-
-From a terminal inside AiiDAlab, clone the repository into the apps
-directory and install the python package:
-
-.. code-block:: bash
-
-   cd ~/apps
-   git clone https://github.com/jap93/aiidalab-alc-ins.git
-   cd aiidalab-alc-ins
-   pip install -e .
-
-Install the AiiDA plugins used by the workflows:
-
-.. code-block:: bash
-
-   pip install git+https://github.com/jap93/aiida-mlip-phonon.git
-   pip install git+https://github.com/stfc/aiida-alc-ins.git@py310-0.2
-   pip install aiida-workgraph mace-torch
-
-Restart the AiiDA daemon so the new plugin entry points are registered:
-
-.. code-block:: bash
-
-   verdi daemon restart
-
-The app should now appear on the AiiDAlab home page.
 
