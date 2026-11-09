@@ -35,6 +35,7 @@ class ProcessModel(tl.HasTraits):
     """Model describing an AiiDA process."""
 
     process_uuid = tl.Unicode(None, allow_none=True)
+    process_log = tl.Unicode("", allow_none=True)
 
     @property
     def process(self) -> ProcessNode | None:

@@ -11,7 +11,9 @@
 *.bak
 *.dat
 *.hdf5
+*.log
 Miniforge3*
+aiida-mlip
 mace_mp_small.model
 test_*.py
 phon_2py.py
@@ -29,9 +31,7 @@ build/
 dist/
 work/
 work/phonon/
-aiida-mlip-phonon
-aiida_pythonjob_ins/
-abinslib/
+aiida-mlip/*
 pip-wheel-metadata/
 .tox/
 

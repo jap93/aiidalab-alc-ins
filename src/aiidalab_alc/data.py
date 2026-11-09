@@ -408,7 +408,19 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
                 self.model.force_constants_data = self._phonopy_to_force_constants_data(
                     phonopy_data
                 )
+                """
+                from aiida_pythonjob_ins.pythonjobs import prepare_read_phonopy_inputs
 
+                read_results, _ = run_get_node(
+                    PythonJob,
+                    **prepare_read_phonopy_inputs(
+                        summary=example_data("phonopy", "NaCl_default", "phonopy.yaml"),
+                        force_constants=example_data("phonopy", "NaCl_default", "FORCE_CONSTANTS"),
+                        code=code,                 
+                        ),
+                    )
+                force_constants = read_results["result"]
+                """
                 self.submit_btn.description = "Submitted Force Constants from Phonopy"
                 self.model.submitted = True
         

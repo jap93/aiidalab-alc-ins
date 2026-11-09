@@ -12,10 +12,11 @@ from aiida.orm import SinglefileData, load_code, load_computer, Computer, Instal
 from aiida_pythonjob import PythonJob
 from aiida_pythonjob_ins.data import ForceConstantsData
 from aiida_pythonjob_ins.pythonjobs import prepare_dispersion_inputs, prepare_dos_inputs
-from aiida_pythonjob_ins.workflows import DispersionWorkChain, DosWorkChain, ToscaFromForceConstantsWorkChain
+#from aiida_pythonjob_ins.workflows import DispersionWorkChain, DosWorkChain, ToscaFromForceConstantsWorkChain
 from aiida import orm
 from aiida.engine import run_get_node
 from aiida_pythonjob import PythonJob
+from aiida.plugins import WorkflowFactory
 
 from aiidalab_alc.resources import ComputationalResourcesModel
 from aiidalab_alc.results import ResultsModel
@@ -94,8 +95,11 @@ class INSProcess:
 
     def submit_process(self):
         """Submit PythonJobs to compute the dispersion and DOS."""
+        exit_status = 0
+
         if not self.validate_model():
-            return
+            exit_status = 1
+            return exit_status
 
         code = get_python_code()
         
@@ -104,19 +108,28 @@ class INSProcess:
             structure = self.data_model.structure_file
 
         force_constants = self.data_model.force_constants_data
+        #force_constants = self._force_constants_data_to_dict(self.data_model.force_constants_data)
         if force_constants is None:
             raise ValueError("Unable to build ForceConstantsData from the supplied input.")
 
         spacing = float(self.workflow_model.ins_spacing)
+
+        DispersionWorkChain = WorkflowFactory("pythonjob_ins.dispersion")
+        DosWorkChain = WorkflowFactory("pythonjob_ins.dos")
+        ToscaFromForceConstantsWorkChain = WorkflowFactory(
+            "pythonjob_ins.tosca_from_force_constants"
+        )
+
         bands_results, bands_node = run_get_node(
             DispersionWorkChain,
             force_constants=force_constants,
             q_spacing=orm.Float(spacing),
             code=code,)
+        self.node = bands_node
 
         if bands_node.exit_status != 0:
             print(f"Dispersion process failed with exit status: {bands_node.exit_status}")
-            return
+            return bands_node.exit_status
 
         #delete this after testing
         #print("results dictionary: ")
@@ -129,7 +142,7 @@ class INSProcess:
         energy_spacing = float(self.workflow_model.ins_dos_energy_spacing)
         dos_results, dos_node = run_get_node(
             DosWorkChain,
-            force_constants=force_constants,
+            force_constants= force_constants,
             q_spacing=orm.Float(spacing),
             energy_spacing=orm.Float(energy_spacing),
             code=code,
@@ -137,7 +150,7 @@ class INSProcess:
 
         if dos_node.exit_status != 0:
             print(f"DOS process failed with exit status: {dos_node.exit_status}")
-            return
+            return dos_node.exit_status
 
         #import matplotlib.pyplot as plt
 
@@ -160,15 +173,17 @@ class INSProcess:
             energy_spacing = float(self.workflow_model.ins_resins_energy_spacing)
             ins_results, ins_node = run_get_node(
                 ToscaFromForceConstantsWorkChain,
-                force_constants=force_constants,
+                force_constants= force_constants,
                 q_spacing=Float(spacing),
-                spectrum={"energy_spacing": Float(energy_spacing), "detector_angles": List(list=[135.0])},
+                spectrum={"temperature": Float(self.workflow_model.ins_temperature), 
+                          "energy_spacing": Float(energy_spacing), 
+                          "detector_angles": List(list=[135.0])},
                 code=code,
             )
 
             if ins_node.exit_status != 0:
                 print(f"INS process failed with exit status: {ins_node.exit_status}")
-                return
+                return ins_node.exit_status
 
             #print(f"INS process finished with UUID: {ins_node.uuid}")
             #print("results dictionary: ")
@@ -199,6 +214,8 @@ class INSProcess:
             self.results_model.tosca_spectrum = ins_results["spectrum"]
         else:
             self.results_model.tosca_spectrum = None
+
+        return exit_status
         
     def _dict_to_force_constants_data(self, data : Dict):
         """Build a ForceConstantsData node from supported input types."""
@@ -265,3 +282,18 @@ class INSProcess:
 
         return None
 
+    def _force_constants_data_to_dict(self, force_constants_data: ForceConstantsData) -> Dict:
+        """Convert a ForceConstantsData node to a dictionary."""
+        if not isinstance(force_constants_data, ForceConstantsData):
+            raise ValueError("Input must be a ForceConstantsData node.")
+
+        with TemporaryDirectory() as tmpdir:
+            force_constants_data.export(tmpdir, overwrite=True)
+            tmp_path = Path(tmpdir) / "force_constants_data.yaml"
+            with open(tmp_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                payload = yaml.safe_load(content)
+                if isinstance(payload, dict) and "force_constants" in payload:
+                    return payload["force_constants"]
+                else:
+                    return payload

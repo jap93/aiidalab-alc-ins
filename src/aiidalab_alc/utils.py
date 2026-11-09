@@ -4,7 +4,7 @@ import pathlib
 from importlib import import_module
 from os import getenv
 
-from IPython.display import Javascript, display
+from IPython.display import display, Javascript
 from ase import Atoms
 from phonopy.structure.atoms import PhonopyAtoms
 
@@ -75,7 +75,7 @@ def get_chem_shell_params(key: str) -> tuple:
     return []
 
 
-def open_link_in_new_tab(path: str, _=None) -> None:
+def open_link_in_new_tab(path: str | pathlib.Path, _=None) -> None:
     """
     Open a given link in a new browser tab.
 

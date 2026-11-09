@@ -6,9 +6,10 @@ from typing import TYPE_CHECKING
 from ase import Atoms
 import numpy as np
 from pathlib import Path
-import lzma
+import h5py
 import yaml
 import shutil
+import logging
 
 
 from aiida.orm import Dict, load_code
@@ -67,16 +68,21 @@ class MLIPProcess:
 
     def submit_process(self):
         """Submit the AiiDA process."""
+        log_path = self.results_model.process_log 
+        logging.basicConfig(filename=log_path, level=logging.INFO, force=True)
+        logger = logging.getLogger(__name__)
+        logger.info('Started MLIP:Process submission')
         if not self.validate_model():
+            logger.info("Model validation failed.")
             return
         structure = self.data_model.structure
         code = load_code(self.resource_model.code_name)
 
         device = self.resource_model.device_name   
-        print("device", device)
 
         model_file = self.workflow_model.force_field
         if not Path(model_file).exists():
+            logger.info("model file does not exist: %s", model_file)
             print("model file does not exist", model_file)
 
         architecture = self.workflow_model.architecture
@@ -87,6 +93,7 @@ class MLIPProcess:
 
         dftd3 = self.workflow_model.use_dftd3
 
+        logger.info("Starting to build inputs")
         if calculation_style == "geometry optimisation":
             inputs_geom = {
                 "code": code,
@@ -138,6 +145,8 @@ class MLIPProcess:
         "symmetrize": Bool(False),
         }
 
+        logger.info("Inputs built, starting WorkGraph")
+
         geomoptCalc = CalculationFactory("mlip.opt")
         phononCalc = CalculationFactory("mlip.ph")
 
@@ -163,31 +172,47 @@ class MLIPProcess:
         **inputs_phon,
        )
 
+        logger.info("WorkGraph built, running now")
+
         wg.outputs.results = wg.tasks.geomopt_calc.outputs.results_dict
         wg.outputs.results_file = wg.tasks.geomopt_calc.outputs.xyz_output
 
         wg.run()
+        self.node = wg.process
+
+        logger.info("WorkGraph run completed: %s", wg.process.exit_status)
 
         if wg.process.is_failed:
-            print("WorkGraph failed")
+            logger.info("WorkGraph failed")
 
         if wg.process.exit_status != 0:
+            logger.info("WorkGraph failed with exit status %s", wg.process.exit_status)
             print(f"Failed with exit status {wg.process.exit_status}")
-
-        self.node = wg.nodes[0]
+            return wg.process.exit_status
 
         #force constants are always needed for scattering calculations, so we will always save them
-        with wg.nodes[4].outputs['force_constants'].value.open(mode='rb') as source:
+        logger.info("Saving force constants and band structure to local files")
+        with wg.tasks.ph_calc.outputs.force_constants.value.open(mode='rb') as source:
             with open('force_constants.hdf5', mode='wb') as target:
                 shutil.copyfileobj(source, target)
 
-        with wg.nodes[4].outputs['band_structure'].value.open(mode='rb') as source:
-            with open('bands.yml.xz', mode='wb') as target:
+        with wg.tasks.ph_calc.outputs.band_structure.value.open(mode='rb') as source:
+            with open('aiida-auto_bands.hdf5', mode='wb') as target:
                 shutil.copyfileobj(source, target)
-        
-        with lzma.open('bands.yml.xz', mode="rt", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
 
+        def read_hdf5_group(group):
+            return {
+                name: read_hdf5_group(item) if isinstance(item, h5py.Group) else item[()]
+                for name, item in group.items()
+            }
+
+        with h5py.File("aiida-auto_bands.hdf5", "r") as bands_file:
+            logger.info("Bands top-level keys from file: %s", list(bands_file.keys()))
+            data = read_hdf5_group(bands_file)
+
+        logger.info("data read from aiida-auto_bands.hdf5: ")
+
+        logger.info("Saving results to ResultsModel")
         self.results_model.final_structure = StructureData(ase=self.dict_to_ase_atoms(wg.outputs.results.value.get_dict()))
         self.results_model.phonon_band_structure = self._clean_band_structure_data(data)
         self.results_model.phonon_dos = self._dos_to_xydata(
@@ -195,7 +220,10 @@ class MLIPProcess:
         )
         self.results_model.phonon_pdos = wg.tasks.ph_calc.outputs.pdos.value.get_content()
         self.results_model.phonopy = wg.tasks.ph_calc.outputs.results_dict.value.get_dict()
-        return
+
+        logger.info("MLIP:Process submission completed successfully")
+        
+        return wg.process.exit_status
     
     def _phonopy_to_bandsplot(self, phonopy_data):
         """Convert phonopy band structure data to a format suitable for the BandsPlotWidget."""
@@ -279,44 +307,70 @@ class MLIPProcess:
         }
     
     def _clean_band_structure_data(self, data) -> BandsData:
-        
+        """Convert phonopy HDF5 band data into an AiiDA BandsData node."""
+        try:
+            path = np.asarray(data["path"], dtype=float)
+            frequencies = np.asarray(data["frequency"], dtype=float)
+        except KeyError as exc:
+            raise ValueError(
+                f"Band structure HDF5 data is missing required dataset: {exc.args[0]}"
+            ) from exc
 
-        frequencies = []
-        kpoints = []
+        if path.ndim != 3 or path.shape[-1] != 3:
+            raise ValueError(
+                "Band structure path must have shape (nsegments, npoints, 3)"
+            )
+        if frequencies.ndim != 3 or frequencies.shape[:2] != path.shape[:2]:
+            raise ValueError(
+                "Band frequencies must have shape (nsegments, npoints, nbands)"
+            )
+
+        segment_nqpoint = np.asarray(
+            data.get("segment_nqpoint", [path.shape[1]] * path.shape[0]),
+            dtype=int,
+        ).reshape(-1)
+        if len(segment_nqpoint) != path.shape[0] or np.any(
+            (segment_nqpoint <= 0) | (segment_nqpoint > path.shape[1])
+        ):
+            raise ValueError(
+                "Segment point counts must fit the band structure path shape"
+            )
+
+        kpoints = np.concatenate(
+            [segment[:count] for segment, count in zip(path, segment_nqpoint, strict=True)]
+        )
+        frequencies = np.concatenate(
+            [
+                segment[:count]
+                for segment, count in zip(frequencies, segment_nqpoint, strict=True)
+            ]
+        )
+
+        def clean_label(label) -> str:
+            if isinstance(label, bytes):
+                label = label.decode("utf-8").rstrip("\x00")
+            return str(label).replace("$", "").replace("\\", "").replace(
+                "mathrm{", ""
+            ).replace("}", "").strip()
+
         labels = []
-
-        def clean_label(label: str) -> str:
-            """Remove LaTeX math mode delimiters and backslashes."""
-            if not label:
-                return label
-            return label.replace("$", "").replace("\\", "").replace("mathrm{", "").replace("}", "")
-
-        for i, segment in enumerate(data['phonon']):
-            for qpt in segment['q-position']:
-                kpoints.append(qpt)
-            band_freqs = [band['frequency'] for band in segment['band']]
-            frequencies.append(band_freqs)
-
-            # Extract label if present for this specific q-point
-            if "label" in segment:
-                labels.append((i, clean_label(segment["label"])))
-
-        kpoints = np.array(kpoints)
-        kpoints = np.reshape(kpoints, (-1, 3))  # Ensure shape is (n_kpoints, 3)
-        frequencies = np.array(frequencies)
+        if "label" in data:
+            raw_labels = np.asarray(data["label"])
+            if raw_labels.shape == (path.shape[0], 2):
+                point_index = 0
+                for segment_index, label_pair in enumerate(raw_labels):
+                    start_label, end_label = map(clean_label, label_pair)
+                    if start_label:
+                        labels.append((point_index, start_label))
+                    end_index = point_index + segment_nqpoint[segment_index] - 1
+                    if end_label:
+                        labels.append((end_index, end_label))
+                    point_index += segment_nqpoint[segment_index]
 
         kpoints_data = KpointsData()
         kpoints_data.set_kpoints(kpoints)
-
-        # Handle top-level labels if no labels were found in the individual points (Phonopy format)
-        if not labels and "labels" in data and "segment_nqpoint" in data:
-            curr_idx = 0
-            for seg_labels, nq in zip(data["labels"], data["segment_nqpoint"]):
-                labels.append((curr_idx, clean_label(seg_labels[0])))
-                curr_idx += nq
-                labels.append((curr_idx - 1, clean_label(seg_labels[1])))
-            # Deduplicate labels at segment boundaries and sort by index
-            labels = sorted(list(set(labels)))
+        if "lattice" in data:
+            kpoints_data.set_cell(np.asarray(data["lattice"], dtype=float))
 
         bands_data = BandsData()
         bands_data.set_kpointsdata(kpoints_data)

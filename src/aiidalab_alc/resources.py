@@ -115,7 +115,7 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     def _submit_ins(self, _=None) -> None:
         """Handle the submission of the AiiDA process."""
         self.error_output.value = ""
-        print("now in resources._submit:validation passed, submitted set to True")
+        
         if self.model.validate():
             self.model.submitted = True
             
@@ -126,7 +126,7 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
                 errors.append("No code selected.")
             if not self.model.process_label:
                 errors.append("Process label cannot be empty.")
-            print("here", errors)
+            
             error_text = " ".join(errors) or "Input validation failed."
             self.error_output.value = f"""
                 <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px;">
