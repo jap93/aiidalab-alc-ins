@@ -75,7 +75,8 @@ run `Euphonic <https://euphonic.readthedocs.io/>`_ inside AiiDA
 automatically by :func:`~aiidalab_alc.ins_process.get_python_code` if needed.
 
 The input is a ``ForceConstantsData`` node built from the Phonopy YAML or
-CASTEP ``.castep_bin`` file.
+CASTEP ``.castep_bin`` file. ``INSProcess`` converts it to the Euphonic
+force-constants dictionary before passing it to the work chains.
 
 1. **DispersionWorkChain** — calculates the phonon band structure at the
    requested q-spacing. Output: ``band_structure``.

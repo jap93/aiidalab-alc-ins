@@ -107,13 +107,14 @@ class INSProcess:
         if structure is None:
             structure = self.data_model.structure_file
 
-        force_constants = self.data_model.force_constants_data
-        #force_constants = self._force_constants_data_to_dict(self.data_model.force_constants_data)
-        if force_constants is None:
+        force_constants_data = self.data_model.force_constants_data
+        if force_constants_data is None:
             raise ValueError("Unable to build ForceConstantsData from the supplied input.")
-
+        force_constants = self._force_constants_data_to_dict(force_constants_data)
+        
         spacing = float(self.workflow_model.ins_spacing)
 
+        #create the "workflows" using the WorkflowFactory to avoid import issues
         DispersionWorkChain = WorkflowFactory("pythonjob_ins.dispersion")
         DosWorkChain = WorkflowFactory("pythonjob_ins.dos")
         ToscaFromForceConstantsWorkChain = WorkflowFactory(
@@ -122,7 +123,7 @@ class INSProcess:
 
         bands_results, bands_node = run_get_node(
             DispersionWorkChain,
-            force_constants=force_constants,
+            force_constants={"node": force_constants_data},
             q_spacing=orm.Float(spacing),
             code=code,)
         self.node = bands_node
@@ -142,7 +143,7 @@ class INSProcess:
         energy_spacing = float(self.workflow_model.ins_dos_energy_spacing)
         dos_results, dos_node = run_get_node(
             DosWorkChain,
-            force_constants= force_constants,
+            force_constants={"node": force_constants_data},
             q_spacing=orm.Float(spacing),
             energy_spacing=orm.Float(energy_spacing),
             code=code,
@@ -173,7 +174,7 @@ class INSProcess:
             energy_spacing = float(self.workflow_model.ins_resins_energy_spacing)
             ins_results, ins_node = run_get_node(
                 ToscaFromForceConstantsWorkChain,
-                force_constants= force_constants,
+                force_constants={"node": force_constants_data},
                 q_spacing=Float(spacing),
                 spectrum={"temperature": Float(self.workflow_model.ins_temperature), 
                           "energy_spacing": Float(energy_spacing), 
@@ -287,13 +288,4 @@ class INSProcess:
         if not isinstance(force_constants_data, ForceConstantsData):
             raise ValueError("Input must be a ForceConstantsData node.")
 
-        with TemporaryDirectory() as tmpdir:
-            force_constants_data.export(tmpdir, overwrite=True)
-            tmp_path = Path(tmpdir) / "force_constants_data.yaml"
-            with open(tmp_path, "r", encoding="utf-8") as f:
-                content = f.read()
-                payload = yaml.safe_load(content)
-                if isinstance(payload, dict) and "force_constants" in payload:
-                    return payload["force_constants"]
-                else:
-                    return payload
+        return force_constants_data.get_force_constants().to_dict()
