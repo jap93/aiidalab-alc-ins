@@ -15,7 +15,7 @@ Requirements
   * `aiida-mlip <https://github.com/stfc/aiida-mlip>`_ (MLIP / phonon
     calculations; installed via ``aiida-mlip-phonon``)
   * `aiida-alc-ins <https://github.com/stfc/aiida-alc-ins>`_
-    (provides ``aiida_pythonjob_ins`` for INS work chains)
+    (provides ``aiida_alc_ins`` for INS work chains)
   * ``aiida-workgraph`` and ``aiida-pythonjob``
   * ``euphonic``, ``phonopy``, ``ase``, ``h5py`` and ``plotly``
 

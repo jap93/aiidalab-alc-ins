@@ -56,7 +56,7 @@ which format was submitted.
 
 .. note::
 
-   Force constants are parsed into an ``aiida_pythonjob_ins``
+   Force constants are parsed into an ``aiida_alc_ins``
    ``ForceConstantsData`` node. If the file has no force constants, or no
    cell for the structure, a ``ValueError`` is raised with a description of
    what is missing.

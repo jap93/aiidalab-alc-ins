@@ -109,7 +109,7 @@ class HistoryAppView(ipw.VBox):
         """Find recent ALC INS and MLIP process nodes in the active profile."""
         filters = {
             "or": [
-                {"process_type": {"like": "%aiida_pythonjob_ins%"}},
+                {"process_type": {"like": "%aiida_alc_ins%"}},
                 {"process_type": {"like": "%aiida_workgraph%"}},
                 {"label": {"like": "%GeomOptGraph%"}},
             ]
@@ -169,7 +169,7 @@ class HistoryAppView(ipw.VBox):
         process_type = str(getattr(node, "process_type", "") or "").casefold()
         label = str(getattr(node, "label", "") or "").casefold()
         if workflow == "ins":
-            return "aiida_pythonjob_ins" in process_type
+            return "aiida_alc_ins" in process_type
         if workflow == "mlip":
             return "aiida_workgraph" in process_type or "geomoptgraph" in label
         return True

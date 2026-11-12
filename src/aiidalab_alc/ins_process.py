@@ -10,9 +10,9 @@ from euphonic import ForceConstants
 from aiida.engine import run_get_node
 from aiida.orm import SinglefileData, load_code, load_computer, Computer, InstalledCode, Float, List
 from aiida_pythonjob import PythonJob
-from aiida_pythonjob_ins.data import ForceConstantsData
-from aiida_pythonjob_ins.pythonjobs import prepare_dispersion_inputs, prepare_dos_inputs
-#from aiida_pythonjob_ins.workflows import DispersionWorkChain, DosWorkChain, ToscaFromForceConstantsWorkChain
+from aiida_alc_ins.data import ForceConstantsData
+from aiida_alc_ins.pythonjobs import prepare_dispersion_inputs, prepare_dos_inputs
+
 from aiida import orm
 from aiida.engine import run_get_node
 from aiida_pythonjob import PythonJob
@@ -115,10 +115,10 @@ class INSProcess:
         spacing = float(self.workflow_model.ins_spacing)
 
         #create the "workflows" using the WorkflowFactory to avoid import issues
-        DispersionWorkChain = WorkflowFactory("pythonjob_ins.dispersion")
-        DosWorkChain = WorkflowFactory("pythonjob_ins.dos")
+        DispersionWorkChain = WorkflowFactory("alc_ins.dispersion")
+        DosWorkChain = WorkflowFactory("alc_ins.dos")
         ToscaFromForceConstantsWorkChain = WorkflowFactory(
-            "pythonjob_ins.tosca_from_force_constants"
+            "alc_ins.tosca_from_force_constants"
         )
 
         bands_results, bands_node = run_get_node(

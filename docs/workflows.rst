@@ -69,7 +69,7 @@ INS workflow
 ------------
 
 Implemented in :class:`~aiidalab_alc.ins_process.INSProcess`, using work
-chains from ``aiida_pythonjob_ins`` (provided by ``aiida-alc-ins``). These
+chains from ``aiida_alc_ins`` (provided by ``aiida-alc-ins``). These
 run `Euphonic <https://euphonic.readthedocs.io/>`_ inside AiiDA
 ``PythonJob`` calculations on a ``python3@localhost`` code, which is created
 automatically by :func:`~aiidalab_alc.ins_process.get_python_code` if needed.

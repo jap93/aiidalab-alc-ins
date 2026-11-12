@@ -13,12 +13,13 @@ RUN echo ${PWD}
 COPY --chown=${NB_UID}:${NB_GID} . /home/jovyan/apps/aiidalab-alc-ins
 RUN ls -l /home/jovyan/apps/aiidalab-alc-ins
 RUN pip install /home/jovyan/apps/aiidalab-alc-ins --no-cache-dir --no-user
-#RUN pip install git+https://github.com/jap93/aiida-mlip-phonon.git@new --no-cache-dir --no-user
-RUN pip install git+https://github.com/stfc/aiida-mlip.git --no-cache-dir --no-user
+
+#this is temporary fix for aiida-mlip
+RUN pip install git+https://github.com/stfc/aiida-mlip-phonon2.git@bands-mods --no-cache-dir --no-user
 # mace-torch takes a very long time to download and produces a massive (>10Gn) image. It is possibly
-# better to open a terminal and download there.
-#RUN pip install mace-torch --no-cache-dir --no-user
-RUN pip install git+https://github.com/stfc/aiida-alc-ins.git@py310-0.2 --no-cache-dir --no-user
+# better to open a terminal and download there. If you dont want it in the image then comment the line below.
+RUN pip install mace-torch --no-cache-dir --no-user
+RUN pip install aiida-alc-ins --no-cache-dir --no-user
 RUN pip install aiida-workgraph --no-cache-dir --no-user
 RUN pip install dftd3 --no-cache-dir --no-user
 RUN pip install logger --no-cache-dir --no-user

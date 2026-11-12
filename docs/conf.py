@@ -61,7 +61,7 @@ autodoc_mock_imports = [
     "aiida",
     "aiida_mlip",
     "aiida_pythonjob",
-    "aiida_pythonjob_ins",
+    "aiida_alc_ins",
     "aiida_workgraph",
     "aiidalab_widgets_base",
     "alc_aiidalab_widgets",
