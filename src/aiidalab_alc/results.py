@@ -1,78 +1,24 @@
 """Module for defining widgets/models for viewing process progress and results."""
+
 import io
 import json
-import yaml
 from pathlib import Path
-from typing import cast
-import numpy as np
-import h5py
 
-from aiidalab_alc.data import DataStepModel
 import aiidalab_widgets_base as awb
-from aiida import plugins
+import h5py
 import ipywidgets as ipw
-import traitlets as tl
-from aiida.common.exceptions import NotExistent
+import numpy as np
+import yaml
+from aiida.orm import BandsData, XyData
 
-from aiida.orm import (
-    BandsData,
-    NodeLinksManager,
-    ProcessNode,
-    StructureData,
-    XyData,
-    load_node,
-)
-#from aiidalab_widgets_base.viewers import BandsDataViewer
+# from aiidalab_widgets_base.viewers import BandsDataViewer
+from aiidalab_alc.common.plots import PlotWidget
 from aiidalab_alc.common.vib_modes import VibrationalModesViewWidget
 from aiidalab_alc.data import DataStepModel
-from aiidalab_alc.common.plots import PlotWidget
+from aiidalab_alc.models.results_model import ResultsModel
 
-#bool8 was depracated in numpy 1.24, but BandsDataViewer still uses it, so alias it to bool_ for compatibility
-#if np.__version__ >= "1.24":
-#    np.bool8 = bool
+__all__ = ["ResultsModel", "ResultsWizardStep"]
 
-class ProcessModel(tl.HasTraits):
-    """Model describing an AiiDA process."""
-
-    process_uuid = tl.Unicode(None, allow_none=True)
-    process_log = tl.Unicode("", allow_none=True)
-
-    @property
-    def process(self) -> ProcessNode | None:
-        """Return the process node for the stored uuid."""
-        if not self.process_uuid:
-            return None
-        try:
-            return cast(ProcessNode, load_node(self.process_uuid))
-        except NotExistent:
-            return None
-
-    @property
-    def has_process(self) -> bool:
-        """Return true if a valid process node is associated with the uuid."""
-        return self.process is not None
-
-    @property
-    def inputs(self) -> NodeLinksManager | list:
-        """Return the inputs for the process."""
-        return self.process.inputs if self.has_process else []
-
-    @property
-    def outputs(self) -> NodeLinksManager | list:
-        """Return the outputs for the process."""
-        return self.process.outputs if self.has_process else []
-
-
-class ResultsModel(ProcessModel):
-    """MVC results step model."""
-
-    blocked = tl.Bool(False)
-    final_structure = tl.Instance(StructureData, allow_none=True)
-    phonon_band_structure = tl.Instance(BandsData, allow_none=True)
-    phonon_dos = tl.Instance(XyData, allow_none=True)
-    phonon_pdos = tl.Unicode("", allow_none=True)
-    phonopy = tl.Dict({}, allow_none=True)
-    tosca_spectrum = tl.Instance(XyData, allow_none=True)
 
 class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     """Wizard for viewing process progress and results."""
@@ -100,12 +46,12 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             self._update_view()
 
     def load_json(self, filename: str):
-        """Helper to load JSON data from a file relative to this script."""
+        """Load JSON data from a file relative to this script."""
         # Try to find the file relative to the package directory first
         base_path = Path(__file__).parent
         filepath = base_path / filename
         try:
-            with open(filepath, "r") as f:
+            with open(filepath) as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
             return None
@@ -128,27 +74,29 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             for label in outputs:
                 node = outputs[label]
                 if isinstance(node, BandsData):
-                    # In a real scenario, you'd convert BandsData to the widget's JSON format
+                    # In a real scenario, you'd convert BandsData to the
+                    # widget's JSON format.
                     # For now, we return None to fall back to the demo JSONs
                     pass
         return bands_data, dos_data
 
     def _update_view(self):
-
-        
-        if not self.result_model.process_uuid and self.data_model.data_type == "ase_mlip":
+        if (
+            not self.result_model.process_uuid
+            and self.data_model.data_type == "ase_mlip"
+        ):
             self.children = [ipw.HTML("Waiting for calculation results...")]
             return
 
-        #create data depending on the style of calculation
+        # create data depending on the style of calculation
         structure_node = self.result_model.final_structure
         bands_node = self.result_model.phonon_band_structure
         dos_node = self.result_model.phonon_dos
-        #print(f"dos_node: {((_, density, dos_unit),) = dos_node.get_y()}")
+        # print(f"dos_node: {((_, density, dos_unit),) = dos_node.get_y()}")
         _, energy, energy_unit = dos_node.get_x()
         ((_, density, dos_unit),) = dos_node.get_y()
-        pdos_node = self.result_model.phonon_pdos
-        #dos = self._create_density_of_states_data(dos_node, pdos_node)
+        # pdos_node = self.result_model.phonon_pdos
+        # dos = self._create_density_of_states_data(dos_node, pdos_node)
         if self.result_model.tosca_spectrum:
             spectrum_node = self.result_model.tosca_spectrum
             _, spectrum_energy, spectrum_energy_unit = spectrum_node.get_x()
@@ -159,38 +107,64 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             spectrum_energy_unit = None
             spectrum = None
             spectrum_unit = None
-        
+
         # 1. Structure Panel
         if structure_node:
             structure_vwr = awb.viewers.StructureDataViewer(structure=structure_node)
         else:
-            structure_vwr = ipw.HTML("<p>No output structure found for this process.</p>")
+            structure_vwr = ipw.HTML(
+                "<p>No output structure found for this process.</p>"
+            )
 
         # 2. Phonon Dispersion Panel
         if bands_node:
-            #phonon_vwr = BandsDataViewer(bands_node, units = "eV", downloadable=True)
+            # phonon_vwr = BandsDataViewer(bands_node, units = "eV", downloadable=True)
             phonon_vwr = VibrationalModesViewWidget(bands_node)
         else:
-            phonon_vwr = ipw.HTML("<p>No output phonon data found for this process.</p>")
+            phonon_vwr = ipw.HTML(
+                "<p>No output phonon data found for this process.</p>"
+            )
 
         # 3. Density of States Panel
         if dos_node:
-            dos_vwr = PlotWidget(data_series=[density], x_values=[energy], x_label=energy_unit, y_label=dos_unit)
+            dos_vwr = PlotWidget(
+                data_series=[density],
+                x_values=[energy],
+                x_label=energy_unit,
+                y_label=dos_unit,
+            )
         else:
-            dos_vwr = ipw.HTML("<p>No output density of states data found for this process.</p>")
+            dos_vwr = ipw.HTML(
+                "<p>No output density of states data found for this process.</p>"
+            )
 
         if spectrum_node:
-            spectrum_vwr = PlotWidget(data_series=[spectrum], x_values=[spectrum_energy], x_label=spectrum_energy_unit, y_label=spectrum_unit)
+            spectrum_vwr = PlotWidget(
+                data_series=[spectrum],
+                x_values=[spectrum_energy],
+                x_label=spectrum_energy_unit,
+                y_label=spectrum_unit,
+            )
         else:
-            spectrum_vwr = ipw.HTML("<p>No output TOSCA spectrum data found for this process.</p>")
+            spectrum_vwr = ipw.HTML(
+                "<p>No output TOSCA spectrum data found for this process.</p>"
+            )
 
         # 4: download of data options
         self.download_input_widget = ipw.HBox()
         self.download_options_widget = DownloadOptionsWidget(self.result_model)
         self.download_input_widget.children = [self.download_options_widget]
-        
+
         # Result tabs
-        tabs = ipw.Tab(children=[structure_vwr, phonon_vwr, dos_vwr, spectrum_vwr, self.download_input_widget])
+        tabs = ipw.Tab(
+            children=[
+                structure_vwr,
+                phonon_vwr,
+                dos_vwr,
+                spectrum_vwr,
+                self.download_input_widget,
+            ]
+        )
         tabs.set_title(0, "Resulting Structure")
         tabs.set_title(1, "Phonon Dispersion")
         tabs.set_title(2, "Density of States")
@@ -206,7 +180,7 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         """Convert AiiDA BandsData to a dictionary format for the plotting widget."""
         if not bands_node:
             return None
-        
+
         # Get bands array. Shape: (kpoints, bands) or (spin, kpoints, bands)
         bands_array = bands_node.get_bands()
 
@@ -237,29 +211,30 @@ class ResultsWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             "kpoints": x_axis.tolist(),
             "labels": labels,
         }
+
     def load_file(self, filename):
-        with open(filename, 'r') as fhandle:
-            return json.load(fhandle)    
-        
+        """Load JSON data from ``filename``."""
+        with open(filename) as fhandle:
+            return json.load(fhandle)
+
     def _create_density_of_states_data(self, dos, pdos):
-        
-        #remove title at the top of dos and pdos
+        # remove title at the top of dos and pdos
         dos = dos.replace("dos # Tetrahedron method", "")
         pdos = pdos.replace("pdos # Tetrahedron method", "")
         # Load the data from the string; genfromtxt ignores lines starting with '#'
         dos_data = np.genfromtxt(io.StringIO(dos))
-        x_dos = dos_data[:, 0] 
-        y_dos = dos_data[:, 1] 
+        x_dos = dos_data[:, 0]
+        y_dos = dos_data[:, 1]
         pdos_data = np.genfromtxt(io.StringIO(pdos))
-        x_pdos = pdos_data[:, 0] 
+        x_pdos = pdos_data[:, 0]
         y_pdos = pdos_data[:, 1]
-        #create json 
-        json_data = {
+        # create json
+        return {
             "dos": {"label": "Total DOS", "x": x_dos.tolist(), "y": y_dos.tolist()},
-            "pdos": {"x": x_pdos.tolist(), "y": y_pdos.tolist()}
+            "pdos": {"x": x_pdos.tolist(), "y": y_pdos.tolist()},
         }
-        return json_data
-    
+
+
 class DownloadOptionsWidget(ipw.VBox):
     """Widget for selecting the download options."""
 
@@ -278,27 +253,19 @@ class DownloadOptionsWidget(ipw.VBox):
         self.model = model
         self.rendered = False
 
-        style = {'description_width': 'initial'}
-
         self.download_btn = ipw.Button(
-                    description="Download Results",
-                    disabled=False,
-                    button_style="success",
-                    tooltip="Download the selected results",
-                    icon="download",
-                    layout={"margin": "auto", "width": "60%"},
-                )
+            description="Download Results",
+            disabled=False,
+            button_style="success",
+            tooltip="Download the selected results",
+            icon="download",
+            layout={"margin": "auto", "width": "60%"},
+        )
         self.download_btn.on_click(self._download_results)
-        
-        self.bands_chk = ipw.Checkbox(
-            value=False, description="Bands", indent=True
-        )
-        self.dos_chk = ipw.Checkbox(
-            value=False, description="DoS", indent=True
-        )
-        self.pdos_chk = ipw.Checkbox(
-            value=False, description="PDOS", indent=True
-        )
+
+        self.bands_chk = ipw.Checkbox(value=False, description="Bands", indent=True)
+        self.dos_chk = ipw.Checkbox(value=False, description="DoS", indent=True)
+        self.pdos_chk = ipw.Checkbox(value=False, description="PDOS", indent=True)
         self.phonopy_chk = ipw.Checkbox(
             value=False, description="Phonopy (with force constants)", indent=True
         )
@@ -330,20 +297,16 @@ class DownloadOptionsWidget(ipw.VBox):
     def _write_xydata(xydata: XyData, filename: str) -> None:
         """Write an AiiDA XyData node as two whitespace-separated columns."""
         x_label, x_values, x_unit = xydata.get_x()
-        (y_label, y_values, y_unit), = xydata.get_y()
+        ((y_label, y_values, y_unit),) = xydata.get_y()
         data = np.column_stack((x_values, y_values))
         header = f"{x_label} ({x_unit})\t{y_label} ({y_unit})"
         np.savetxt(filename, data, header=header)
-    
-    def _download_results(self, _):
-        """Handle the download button click event. Very basic at the moment, just prints the selected options."""
-        selected_options = {
-            "bands": self.bands_chk.value,
-            "dos": self.dos_chk.value,
-            "pdos": self.pdos_chk.value,
-            "phonopy": self.phonopy_chk.value,
-        }
 
+    def _download_results(self, _):
+        """Handle the download button click event.
+
+        Very basic at the moment, just prints the selected options.
+        """
         if self.bands_chk.value:
             np.savetxt("bands_data.dat", self.model.phonon_band_structure.get_bands())
 
@@ -396,5 +359,3 @@ class DownloadOptionsWidget(ipw.VBox):
         for child in self.children:
             child.disabled = val
         return
-
-    

@@ -4,10 +4,9 @@ import pathlib
 from importlib import import_module
 from os import getenv
 
-from IPython.display import display, Javascript
 from ase import Atoms
+from IPython.display import Javascript, display
 from phonopy.structure.atoms import PhonopyAtoms
-
 
 
 def get_py_app_dir() -> pathlib.Path:
@@ -38,7 +37,8 @@ def get_app_dir() -> pathlib.Path:
         The path to the root AiiDAlab application directory.
     """
     return (
-        pathlib.Path(getenv("AIIDALAB_APPS", getenv("HOME", "") + "/apps/")) / "aiidalab-alc-ins/"
+        pathlib.Path(getenv("AIIDALAB_APPS", getenv("HOME", "") + "/apps/"))
+        / "aiidalab-alc-ins/"
     )
 
 
@@ -109,18 +109,19 @@ def test_resource_import() -> bool:
 
 
 def phonopy_to_ase(phonopy_atoms: PhonopyAtoms) -> Atoms:
-  return Atoms(
-      symbols=phonopy_atoms.symbols,
-      cell=phonopy_atoms.cell,
-      positions=phonopy_atoms.positions,
-      pbc=True,
-  )
+    """Convert a ``PhonopyAtoms`` object to a periodic ASE ``Atoms`` object."""
+    return Atoms(
+        symbols=phonopy_atoms.symbols,
+        cell=phonopy_atoms.cell,
+        positions=phonopy_atoms.positions,
+        pbc=True,
+    )
 
 
 def ase_to_phonopy(ase_atoms) -> PhonopyAtoms:
-  return PhonopyAtoms(
-      symbols=ase_atoms.get_chemical_symbols(),
-      cell=ase_atoms.get_cell(),
-      positions=ase_atoms.get_positions(),
-  )
-
+    """Convert an ASE ``Atoms`` object to a ``PhonopyAtoms`` object."""
+    return PhonopyAtoms(
+        symbols=ase_atoms.get_chemical_symbols(),
+        cell=ase_atoms.get_cell(),
+        positions=ase_atoms.get_positions(),
+    )

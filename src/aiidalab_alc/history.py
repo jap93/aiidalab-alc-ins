@@ -87,7 +87,8 @@ class HistoryAppView(ipw.VBox):
         )
 
         footer = ipw.HTML(
-            f"<footer>Copyright (c) {datetime.now().year} Ada Lovelace Centre (STFC)</footer>",
+            f"<footer>Copyright (c) {datetime.now().year} "
+            "Ada Lovelace Centre (STFC)</footer>",
             layout={"margin": "2em 0 0 auto"},
         )
         super().__init__(
@@ -159,9 +160,12 @@ class HistoryAppView(ipw.VBox):
         self.process_select.options = options
         self.process_select.value = ""
         self.status.value = (
-            f"<p>{len(matches)} process(es) found; showing up to 200 recent ALC runs.</p>"
+            f"<p>{len(matches)} process(es) found; "
+            "showing up to 200 recent ALC runs.</p>"
         )
-        self.details.value = "<p>Select a process to inspect its state, inputs, and outputs.</p>"
+        self.details.value = (
+            "<p>Select a process to inspect its state, inputs, and outputs.</p>"
+        )
 
     @staticmethod
     def _matches_workflow(node: ProcessNode, workflow: str) -> bool:
@@ -193,10 +197,14 @@ class HistoryAppView(ipw.VBox):
             return
 
         try:
-            node = QueryBuilder().append(
-                ProcessNode,
-                filters={"uuid": {"==": process_uuid}},
-            ).first()[0]
+            node = (
+                QueryBuilder()
+                .append(
+                    ProcessNode,
+                    filters={"uuid": {"==": process_uuid}},
+                )
+                .first()[0]
+            )
         except Exception as error:
             self.details.value = f"<p style='color:#9b2c2c'>{escape(str(error))}</p>"
             return
@@ -205,6 +213,8 @@ class HistoryAppView(ipw.VBox):
         state = getattr(node, "process_state", None)
         state = escape(str(getattr(state, "value", state) or "Created"))
         exit_status = getattr(node, "exit_status", None)
+        exit_text = str(exit_status if exit_status is not None else "Not finished")
+        created = node.ctime.strftime("%Y-%m-%d %H:%M:%S")
         description = escape(getattr(node, "description", "") or "")
         self.details.value = (
             "<h3>Process details</h3>"
@@ -213,8 +223,8 @@ class HistoryAppView(ipw.VBox):
             f"<tr><th>UUID</th><td><code>{escape(node.uuid)}</code></td></tr>"
             f"<tr><th>Type</th><td><code>{process_type}</code></td></tr>"
             f"<tr><th>State</th><td>{state}</td></tr>"
-            f"<tr><th>Exit status</th><td>{escape(str(exit_status if exit_status is not None else 'Not finished'))}</td></tr>"
-            f"<tr><th>Created</th><td>{node.ctime.strftime('%Y-%m-%d %H:%M:%S')}</td></tr>"
+            f"<tr><th>Exit status</th><td>{escape(exit_text)}</td></tr>"
+            f"<tr><th>Created</th><td>{created}</td></tr>"
             f"<tr><th>Description</th><td>{description or 'None'}</td></tr>"
             "</tbody></table>"
             f"<h4>Inputs</h4>{self._links_list(node.inputs)}"

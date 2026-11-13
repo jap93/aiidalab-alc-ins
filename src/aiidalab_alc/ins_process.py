@@ -1,33 +1,36 @@
+"""AiiDA process driver for INS calculations from force constants."""
+
 from __future__ import annotations
 
+import logging
+import sys
+import tempfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Dict
 
 import yaml
+from aiida import orm
+from aiida.common.exceptions import NotExistent
+from aiida.engine import run_get_node
+from aiida.orm import (
+    Computer,
+    Float,
+    InstalledCode,
+    List,
+    SinglefileData,
+    load_code,
+    load_computer,
+)
+from aiida.plugins import WorkflowFactory
+from aiida_alc_ins.data import ForceConstantsData
 from euphonic import ForceConstants
 
-from aiida.engine import run_get_node
-from aiida.orm import SinglefileData, load_code, load_computer, Computer, InstalledCode, Float, List
-from aiida_pythonjob import PythonJob
-from aiida_alc_ins.data import ForceConstantsData
-from aiida_alc_ins.pythonjobs import prepare_dispersion_inputs, prepare_dos_inputs
-
-from aiida import orm
-from aiida.engine import run_get_node
-from aiida_pythonjob import PythonJob
-from aiida.plugins import WorkflowFactory
-
+from aiidalab_alc.data import DataStepModel
 from aiidalab_alc.resources import ComputationalResourcesModel
 from aiidalab_alc.results import ResultsModel
-from aiidalab_alc.data import DataStepModel
 from aiidalab_alc.workflow import WorkflowCalculationModel
 
-import tempfile
-import sys
-from aiida.common.exceptions import NotExistent
-from aiida.manage.configuration import get_config
-from aiida.storage.sqlite_temp import SqliteTempBackend
+
 def get_python_code():
     """Load an in-memory AiiDA profile and return a localhost Python ``Code``.
 
@@ -43,7 +46,6 @@ def get_python_code():
     # this, but a profile built here is not flagged as one. Setting the option on
     # the profile is the supported route: profile options take priority over the
     # config and the built-in default (`Manager.get_option`).
-    
 
     try:
         computer = load_computer("localhost")
@@ -71,7 +73,13 @@ def get_python_code():
 class INSProcess:
     """Handle an INS-style phonon workflow driven by PythonJob calculations."""
 
-    def __init__(self, data_model: DataStepModel, workflow_model: WorkflowCalculationModel, resource_model: ComputationalResourcesModel, results_model: ResultsModel):
+    def __init__(
+        self,
+        data_model: DataStepModel,
+        workflow_model: WorkflowCalculationModel,
+        resource_model: ComputationalResourcesModel,
+        results_model: ResultsModel,
+    ):
         """Initialise the INS process wrapper."""
         self.data_model = data_model
         self.workflow_model = workflow_model
@@ -81,12 +89,10 @@ class INSProcess:
 
     def validate_model(self) -> bool:
         """Validate the required data for the INS workflow."""
-
         if not self.data_model.has_structure and not self.data_model.has_file:
             print("No structure provided for INS calculation.")
             return False
 
-        
         if not self.data_model.has_force_constants:
             print("No force constants provided for INS calculation.")
             return False
@@ -96,53 +102,61 @@ class INSProcess:
     def submit_process(self):
         """Submit PythonJobs to compute the dispersion and DOS."""
         exit_status = 0
+        log_path = self.results_model.process_log
+        logging.basicConfig(filename=log_path, level=logging.INFO, force=True)
+        logger = logging.getLogger(__name__)
+        logger.info("Started MLIP:Process submission")
 
         if not self.validate_model():
-            exit_status = 1
-            return exit_status
+            logger.error("INSProcess validation failed. Aborting submission.")
+            return 400
 
         code = get_python_code()
-        
+
         structure = self.data_model.structure
         if structure is None:
             structure = self.data_model.structure_file
 
         force_constants_data = self.data_model.force_constants_data
         if force_constants_data is None:
-            raise ValueError("Unable to build ForceConstantsData from the supplied input.")
-        force_constants = self._force_constants_data_to_dict(force_constants_data)
-        
+            raise ValueError(
+                "Unable to build ForceConstantsData from the supplied input."
+            )
+        # force_constants = self._force_constants_data_to_dict(force_constants_data)
+
         spacing = float(self.workflow_model.ins_spacing)
 
-        #create the "workflows" using the WorkflowFactory to avoid import issues
-        DispersionWorkChain = WorkflowFactory("alc_ins.dispersion")
-        DosWorkChain = WorkflowFactory("alc_ins.dos")
-        ToscaFromForceConstantsWorkChain = WorkflowFactory(
-            "alc_ins.tosca_from_force_constants"
-        )
+        # create the "workflows" using the WorkflowFactory to avoid import issues
+        logger.info("Creating work chains using WorkflowFactory")
+        dispersion_workchain = WorkflowFactory("alc_ins.dispersion")
+        dos_workchain = WorkflowFactory("alc_ins.dos")
+        tosca_workchain = WorkflowFactory("alc_ins.tosca_from_force_constants")
+        logger.info("Submitting DispersionWorkChain")
 
         bands_results, bands_node = run_get_node(
-            DispersionWorkChain,
+            dispersion_workchain,
             force_constants={"node": force_constants_data},
             q_spacing=orm.Float(spacing),
-            code=code,)
+            code=code,
+        )
         self.node = bands_node
 
         if bands_node.exit_status != 0:
-            print(f"Dispersion process failed with exit status: {bands_node.exit_status}")
+            print(
+                f"Dispersion process failed with exit status: {bands_node.exit_status}"
+            )
+            logger.error(
+                f"Dispersion process failed with exit status: {bands_node.exit_status}"
+            )
             return bands_node.exit_status
 
-        #delete this after testing
-        #print("results dictionary: ")
-        #for key, value in bands_results.items():
-        #    print(f"  {key}: {value}")
-
-        #bands_results["band_structure"].show_mpl()
-        #delete to here
+        logger.info(
+            "DispersionWorkChain completed successfully. Submitting DosWorkChain"
+        )
         spacing = float(self.workflow_model.ins_dos_qspacing)
         energy_spacing = float(self.workflow_model.ins_dos_energy_spacing)
         dos_results, dos_node = run_get_node(
-            DosWorkChain,
+            dos_workchain,
             force_constants={"node": force_constants_data},
             q_spacing=orm.Float(spacing),
             energy_spacing=orm.Float(energy_spacing),
@@ -153,32 +167,19 @@ class INSProcess:
             print(f"DOS process failed with exit status: {dos_node.exit_status}")
             return dos_node.exit_status
 
-        #import matplotlib.pyplot as plt
-
-        #dos = dos_results["dos"]
-        #_, energy, energy_unit = dos.get_x()
-        #((_, density, dos_unit),) = dos.get_y()
-
-        #fig, ax = plt.subplots()
-        #ax.plot(energy, density)
-        #ax.set_xlabel(f"Energy ({energy_unit})")
-        #ax.set_ylabel(f"Density of states ({dos_unit})")
-        #ax.set_title("NaCl phonon DOS (from Phonopy)")
-        #fig.tight_layout()
-
-        #plt.show()
-
-        #INS calculation starts if requested using tosca work chain
+        # INS calculation starts if requested using tosca work chain
         if self.workflow_model.calculate_resins:
             spacing = float(self.workflow_model.ins_resins_qspacing)
             energy_spacing = float(self.workflow_model.ins_resins_energy_spacing)
             ins_results, ins_node = run_get_node(
-                ToscaFromForceConstantsWorkChain,
+                tosca_workchain,
                 force_constants={"node": force_constants_data},
                 q_spacing=Float(spacing),
-                spectrum={"temperature": Float(self.workflow_model.ins_temperature), 
-                          "energy_spacing": Float(energy_spacing), 
-                          "detector_angles": List(list=[135.0])},
+                spectrum={
+                    "temperature": Float(self.workflow_model.ins_temperature),
+                    "energy_spacing": Float(energy_spacing),
+                    "detector_angles": List(list=[135.0]),
+                },
                 code=code,
             )
 
@@ -186,26 +187,10 @@ class INSProcess:
                 print(f"INS process failed with exit status: {ins_node.exit_status}")
                 return ins_node.exit_status
 
-            #print(f"INS process finished with UUID: {ins_node.uuid}")
-            #print("results dictionary: ")
-            #for key, value in ins_results.items():
-            #    print(f"  {key}: {value}")
-
-            #spectrum = ins_results["spectrum"]
-            #print(f"INS spectrum type: {type(spectrum)}")
-            #dos = ins_results["spectrum"]
-            #_, energy, energy_unit = dos.get_x()
-            #((_, density, dos_unit),) = dos.get_y()
-
-            #fig, ax = plt.subplots()
-            #ax.plot(energy, density)
-            #ax.set_xlabel(f"Energy ({energy_unit})")
-            #ax.set_ylabel(f"Density of states ({dos_unit})")
-            #ax.set_title("NaCl phonon DOS (from Phonopy)")
-            #fig.tight_layout()
-            #plt.show()
-    
-        #keep the necessary data in the results model for later use
+            logger.info(
+                "INS process completed successfully. Creating results model entries."
+            )
+        # keep the necessary data in the results model for later use
         self.results_model.process_uuid = bands_node.uuid
         self.results_model.final_structure = structure
         self.results_model.phonon_band_structure = bands_results["band_structure"]
@@ -216,9 +201,10 @@ class INSProcess:
         else:
             self.results_model.tosca_spectrum = None
 
+        logger.info("INSProcess submission completed successfully.")
         return exit_status
-        
-    def _dict_to_force_constants_data(self, data : Dict):
+
+    def _dict_to_force_constants_data(self, data: dict):
         """Build a ForceConstantsData node from supported input types."""
         if isinstance(data, ForceConstantsData):
             return data
@@ -229,38 +215,21 @@ class INSProcess:
         if hasattr(data, "get_force_constants"):
             return ForceConstantsData(data.get_force_constants())
 
-        if isinstance(data, (bytes, str)):
-            content = data.decode("utf-8") if isinstance(data, bytes) else data
-            content = content.strip()
-            if not content:
-                return None
+        if isinstance(data, bytes | str):
+            return self._force_constants_from_text(data, "force_constants_input.yaml")
 
-            payload = yaml.safe_load(content)
-            if isinstance(payload, dict) and "force_constants" in payload:
-                payload = payload["force_constants"]
-                tmp_filename = "phonopy.yaml"
-            else:
-                tmp_filename = "force_constants_input.yaml"
+        if isinstance(data, SinglefileData):
+            return self._force_constants_from_text(
+                data.get_content(), data.filename or "force_constants_input"
+            )
 
-            with TemporaryDirectory() as tmpdir:
-                tmp_path = Path(tmpdir) / tmp_filename
-                tmp_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
-                return ForceConstantsData.from_phonopy(
-                    path=tmpdir,
-                    summary_name=tmp_filename,
-                )
+        return None
 
-            return None
-
-        if not isinstance(data, SinglefileData):
-            return None
-
-        filename = data.filename or "force_constants_input"
-        content = data.get_content()
-
+    @staticmethod
+    def _force_constants_from_text(content: bytes | str, default_filename: str):
+        """Build a ForceConstantsData node from phonopy YAML text."""
         if isinstance(content, bytes):
             content = content.decode("utf-8")
-
         content = content.strip()
         if not content:
             return None
@@ -270,20 +239,21 @@ class INSProcess:
             payload = payload["force_constants"]
             tmp_filename = "phonopy.yaml"
         else:
-            tmp_filename = filename
+            tmp_filename = default_filename
 
         with TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir) / tmp_filename
-            tmp_path.write_text(yaml.safe_dump(payload, sort_keys=False), encoding="utf-8")
-
+            tmp_path.write_text(
+                yaml.safe_dump(payload, sort_keys=False), encoding="utf-8"
+            )
             return ForceConstantsData.from_phonopy(
                 path=tmpdir,
                 summary_name=tmp_filename,
             )
 
-        return None
-
-    def _force_constants_data_to_dict(self, force_constants_data: ForceConstantsData) -> Dict:
+    def _force_constants_data_to_dict(
+        self, force_constants_data: ForceConstantsData
+    ) -> dict:
         """Convert a ForceConstantsData node to a dictionary."""
         if not isinstance(force_constants_data, ForceConstantsData):
             raise ValueError("Input must be a ForceConstantsData node.")

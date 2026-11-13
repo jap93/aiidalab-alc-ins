@@ -8,7 +8,10 @@ import traitlets as tl
 from aiida.common.exceptions import NotExistent
 from aiida.orm import Code, InstalledCode, QueryBuilder, load_code, load_computer
 
+from aiidalab_alc.models.resources_model import ComputationalResourcesModel
 from aiidalab_alc.utils import test_resource_import
+
+__all__ = ["ComputationalResourcesModel", "ComputationalResourcesWizardStep"]
 
 
 def _nvidia_container_toolkit_installed() -> bool:
@@ -17,41 +20,6 @@ def _nvidia_container_toolkit_installed() -> bool:
         shutil.which(executable) is not None
         for executable in ("nvidia-container-cli", "nvidia-ctk")
     )
-
-
-class ComputationalResourcesModel(tl.HasTraits):
-    """Model for the resource setup stage."""
-
-    code_name = tl.Unicode("").tag(sync=True)
-    #code_label = tl.Unicode("").tag(sync=True)
-    device_name = tl.Unicode("").tag(sync=True)
-    # ncpus = tl.Int(1).tag(sync=True)
-    process_label = tl.Unicode("").tag(sync=True)
-    process_description = tl.Unicode("").tag(sync=True)
-    submitted = tl.Bool(False).tag(sync=True)
-
-    default_guide = """
-        <p>
-            Configure the computational resources required to run the MLIP
-            calculation. Additionally, you can provide a label and description for
-            the AiiDA process that will be created.
-        </p>
-    """
-
-    def validate(self) -> bool:
-        """
-        Validate the model's inputs.
-
-        Returns
-        -------
-        bool
-            True if all inputs are valid, False otherwise.
-        """
-        if not self.code_name:
-            return False
-        if not self.process_label:
-            return False
-        return True
 
 
 class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
@@ -115,10 +83,10 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     def _submit_ins(self, _=None) -> None:
         """Handle the submission of the AiiDA process."""
         self.error_output.value = ""
-        
+
         if self.model.validate():
             self.model.submitted = True
-            
+
         else:
             # Capture specific validation errors for the UI
             errors = []
@@ -126,20 +94,22 @@ class ComputationalResourcesWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
                 errors.append("No code selected.")
             if not self.model.process_label:
                 errors.append("Process label cannot be empty.")
-            
+
             error_text = " ".join(errors) or "Input validation failed."
             self.error_output.value = f"""
-                <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 5px;">
+                <div style="background-color: #f8d7da; color: #721c24;
+                    padding: 10px; border: 1px solid #f5c6cb;
+                    border-radius: 5px;">
                     <strong>Validation Error:</strong> {error_text}
                 </div>"""
-        
+
         return
 
     def _refresh_widget(self) -> None:
         """Refresh the widget's contents."""
         self.mlips_installed = test_resource_import()
         if not self.mlips_installed:
-            self.submit_btn.disabled = True
+            self.model.submit_btn.disabled = True
             self.mlips_warning.value = (
                 "<p style='color:red;'>"
                 "The aiida-mlip plugin is not installed. Please install it "
@@ -168,7 +138,7 @@ class ResourceSetupBox(ipw.VBox):
 
         self.code = ipw.Combobox(
             description="Code:",
-            value = "",
+            value="",
             layout={"width": "60%"},
         )
         tl.link((self.code, "value"), (self.model, "code_name"))
@@ -189,36 +159,27 @@ class ResourceSetupBox(ipw.VBox):
 
         tl.link((self.code, "value"), (self.model, "code_name"))
 
-        #style = {'description_width': 'initial'}
-        
+        # style = {'description_width': 'initial'}
+
         self.device_dropdown = ipw.Dropdown(
-            options=["cpu", "cuda"] if _nvidia_container_toolkit_installed() else ["cpu"],
-            value = "cpu",
+            options=["cpu", "cuda"]
+            if _nvidia_container_toolkit_installed()
+            else ["cpu"],
+            value="cpu",
             description="Device:",
-            #style=style,
+            # style=style,
             disabled=False,
             layout=ipw.Layout(width="80%"),
         )
         # self.device_dropdown.observe(self._update_device, names='value')
         tl.link((self.device_dropdown, "value"), (self.model, "device_name"))
 
-        # self.ncpus_input = ipw.BoundedIntText(
-        #     value=self.model.ncpus,
-        #     min=1,
-        #     max=128,
-        #     step=1,
-        #     description="No. CPUs:",
-        #     disabled=False,
-        #     layout=ipw.Layout(width="80%"),
-        # )
-        # tl.link((self.ncpus_input, "value"), (self.model, "ncpus"))
-
         self.label = ipw.Text(
             value=self.model.process_label,
             placeholder="Enter process label",
             description="Process Label:",
             disabled=False,
-            #style=style,
+            # style=style,
             layout=ipw.Layout(width="80%"),
         )
         tl.link((self.label, "value"), (self.model, "process_label"))
@@ -228,7 +189,7 @@ class ResourceSetupBox(ipw.VBox):
             placeholder="Enter process description",
             description="Description:",
             disabled=False,
-            #style=style,
+            # style=style,
             layout=ipw.Layout(width="80%"),
         )
         tl.link((self.description, "value"), (self.model, "process_description"))
@@ -261,7 +222,8 @@ class ResourceSetupBox(ipw.VBox):
         executable = shutil.which("janus")
         if executable is None:
             self.code_status.value = (
-                "<span style='color:red;'>Janus executable was not found on PATH.</span>"
+                "<span style='color:red;'>Janus executable was not found on "
+                "PATH.</span>"
             )
             return
 
@@ -269,7 +231,8 @@ class ResourceSetupBox(ipw.VBox):
             computer = load_computer("localhost")
         except NotExistent:
             self.code_status.value = (
-                "<span style='color:red;'>AiiDA computer 'localhost' is not configured.</span>"
+                "<span style='color:red;'>AiiDA computer 'localhost' is not "
+                "configured.</span>"
             )
             return
 
@@ -290,11 +253,3 @@ class ResourceSetupBox(ipw.VBox):
         self.code.value = "janus"
         self.code_status.value = f"<span style='color:green;'>{status}</span>"
         return
-    
-    # def _update_device(self, _) -> None:
-    #     """Update the device options."""
-    #     if self.device_dropdown.value.lower() == "cpu":
-    #         self.ncpus_input.disabled = False
-    #     else:
-    #         self.ncpus_input.disabled = True
-            
