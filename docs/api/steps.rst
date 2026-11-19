@@ -24,4 +24,3 @@ Results
 -------
 
 .. automodule:: aiidalab_alc.results
-

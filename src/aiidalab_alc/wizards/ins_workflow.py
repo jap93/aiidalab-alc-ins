@@ -1,7 +1,7 @@
 """Widgets for configuring the INS workflow."""
 
-import ipywidgets as ipw
-import traitlets as tl
+import ipywidgets as ipw  # pyright: ignore[reportMissingImports]
+import traitlets as tl  # pyright: ignore[reportMissingImports]
 
 from aiidalab_alc.models.workflow_model import WorkflowCalculationModel
 

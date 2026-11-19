@@ -19,7 +19,7 @@ To initiate a workflow the *new calculation* button must be usedThe app is laid 
 
 Each step has a green **Submit** button that confirms its settings. Once a
 step is submitted its inputs are locked. The **submit** button in step 3 starts the calculation. If you
-are running locally, it will turn red and then turn green again once the calculation is complete. 
+are running locally, it will turn red and then turn green again once the calculation is complete.
 To start again, click **New Calculation** at the top of the page or reload the current page.
 
 Which workflow is undertaken?
@@ -69,4 +69,3 @@ Example: INS from Phonopy force constants
 3. In **Configure Computational Resources**, enter a **Process Label** and
    click **Submit**.
 4. Open **Results** to view the structure, phonon dispersion, DOS and TOSCA spectrum.
-

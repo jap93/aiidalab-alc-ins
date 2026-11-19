@@ -5,7 +5,6 @@ from typing import Generic, TypeVar
 
 import ipywidgets as ipw
 from aiida.orm import Node, QueryBuilder, SinglefileData
-
 from alc_aiidalab_widgets.utils import tab_from_dict
 from alc_aiidalab_widgets.widgets import AiiDADatabaseQueryWidget, FileUploadWidget
 from alc_aiidalab_widgets.widgets.parameters import ParamEntry, ParametersBlock
@@ -27,7 +26,6 @@ class ModelSelect(ipw.VBox, Generic[NT]):
         logspace: ipw.Output | None = None,
         **kwargs,
     ) -> None:
-
         if logspace is not None:
             self.logspace = logspace
         else:
@@ -246,7 +244,6 @@ if aiida_mlip is not None:
                 return self.model_cls(file, architecture=arch)
 
         def _try_load_model(self) -> tuple[str, NT]:
-
             arch = self.arch.value
             typ = self.model_type.get_title(self.model_type.selected_index)
 

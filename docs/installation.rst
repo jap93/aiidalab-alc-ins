@@ -28,7 +28,7 @@ Using Docker
 
 A ``Dockerfile`` is provided in the ``docker/`` directory. It builds on the
 ALC AiiDAlab base image, installs the required AiiDA plugins, and copies the
-application into ``/home/jovyan/apps/aiidalab-alc-ins``. 
+application into ``/home/jovyan/apps/aiidalab-alc-ins``.
 
 The image can be built from the repository root, where the whole
 repository is copied into the image:
@@ -54,5 +54,3 @@ Then run the container and open the URL printed in the terminal:
    .. code-block:: bash
 
       pip install mace-torch
-
-

@@ -13,4 +13,3 @@ help:
 # Route all unknown targets to Sphinx using the "make mode" option.
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-

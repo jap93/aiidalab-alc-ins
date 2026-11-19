@@ -2,9 +2,9 @@
 
 from importlib.util import find_spec
 
-import aiidalab_widgets_base as awb
-import ipywidgets as ipw
-import traitlets as tl
+import aiidalab_widgets_base as awb  # type: ignore[import-not-found]
+import ipywidgets as ipw  # type: ignore[import-not-found]
+import traitlets as tl  # type: ignore[import-not-found]
 
 from aiidalab_alc.common.file_selector import create_filename_selector
 from aiidalab_alc.models.workflow_model import WorkflowCalculationModel

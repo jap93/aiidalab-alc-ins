@@ -20,4 +20,3 @@ aiidalab_alc.utils
 ------------------
 
 .. automodule:: aiidalab_alc.utils
-

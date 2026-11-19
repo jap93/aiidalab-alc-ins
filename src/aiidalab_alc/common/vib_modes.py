@@ -204,7 +204,6 @@ class VibrationalModesViewWidget(ipw.VBox):
 
     @staticmethod
     def _clean_phonopy_bs_yaml(data: _PhonopyDict) -> BandsData:
-
         clean = VibrationalModesViewWidget._clean_label
 
         frequencies = []

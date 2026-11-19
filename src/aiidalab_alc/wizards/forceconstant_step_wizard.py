@@ -1,3 +1,4 @@
+# pyright: reportMissingImports=false, reportMissingModuleSource=false
 """Defines the view components for the force constant setup stage."""
 
 from io import BytesIO
@@ -14,7 +15,6 @@ from aiida_alc_ins.data import ForceConstantsData
 from euphonic import ForceConstants
 
 from aiidalab_alc.common.file_handling import FileUploadWidget
-from aiidalab_alc.common.file_selector import FilenameSelector
 from aiidalab_alc.models.data_model import DataStepModel
 
 
@@ -52,14 +52,9 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         self.input_radio_btn = DataInputWidget(model=self.model)
         self.input_radio_btn.render()
         self.file_uploader = FileUploadWidget(description="force constants: ")
-        self.castep_selector = FilenameSelector(
-            extensions=[".castep_bin"],
-            default="",
-        )
         self.file_input_widget.children = [self.input_radio_btn, self.file_uploader]
         ipw.dlink((self.file_uploader, "file"), (self.model, "force_constants_file"))
         self.input_radio_btn.observe(self._on_data_type_change, names="value")
-        self.castep_selector.observe(self._on_castep_path_change, names="filename")
 
         self.tabs.children = [
             self.file_input_widget,
@@ -70,32 +65,9 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         self.model.observe(self._on_file_upload, "force_constants_file")
 
     def _on_data_type_change(self, change):
-        """Show the appropriate file input for the selected data format."""
-        if change["new"] == "castep":
-            self.model.force_constants_file = None
-            self.model.force_constants_data = None
-            self.model.force_constants_path = ""
-            self.file_input_widget.children = [
-                self.input_radio_btn,
-                self.castep_selector,
-            ]
-        else:
-            self.model.force_constants_path = ""
-            self.model.force_constants_data = None
-            self.file_input_widget.children = [self.input_radio_btn, self.file_uploader]
-
-    def _on_castep_path_change(self, change):
-        """Load force constants and structure from the selected CASTEP file."""
-        filename = change["new"]
-        self.model.force_constants_path = filename
+        """Clear previously loaded data when the data format changes."""
+        self.model.force_constants_path = ""
         self.model.force_constants_data = None
-        if not filename:
-            return
-
-        self.model.force_constants_data = ForceConstantsData.from_castep(filename)
-        self.model.structure = self._force_constants_data_to_structure_data(
-            self.model.force_constants_data
-        )
 
     def render(self):
         """Render the wizard's contents if not already rendered."""
@@ -130,7 +102,6 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
     def disable_inputs(self) -> None:
         """Disable force-constant inputs after a structure is submitted."""
         self.file_uploader.disable(True)
-        self.castep_selector.disabled = True
         self.submit_btn.disabled = True
         self.input_radio_btn._disable()
 
@@ -142,24 +113,40 @@ class ForceConstantWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
             self.disable_inputs()
 
             if self.model.data_type == "phonopy" and self.model.force_constants_file:
-                self.model.structure = self._phonpopy_to_structure_data(
-                    self.model.force_constants_file.get_content()
-                )
+                try:
+                    self.model.structure = self._phonpopy_to_structure_data(
+                        self.model.force_constants_file.get_content()
+                    )
 
-                phonopy_data = self.model.force_constants_file.get_content()
+                    phonopy_data = self.model.force_constants_file.get_content()
 
-                self.model.force_constants_data = self._phonopy_to_force_constants_data(
-                    phonopy_data
-                )
+                    self.model.force_constants_data = (
+                        self._phonopy_to_force_constants_data(phonopy_data)
+                    )
+                except UnicodeDecodeError:
+                    print("Phonopy data is not valid UTF-8 text", flush=True)
+                except Exception as e:
+                    print(f"Failed to read Phonopy data as bytes: {e}", flush=True)
 
                 self.submit_btn.description = "Submitted Force Constants from Phonopy"
                 self.model.submitted = True
 
-            elif (
-                self.model.data_type == "castep"
-                and self.model.force_constants_path
-                and self.model.force_constants_data
-            ):
+            elif self.model.data_type == "castep" and self.model.force_constants_file:
+                try:
+                    castep_bytes = self.model.force_constants_file.get_content("rb")
+                    filename = self.model.force_constants_file.filename
+                    self.model.force_constants_data = (
+                        self._castep_bin_to_force_constants_data(
+                            castep_bytes, filename=filename
+                        )
+                    )
+                    self.model.structure = self._force_constants_data_to_structure_data(
+                        self.model.force_constants_data
+                    )
+
+                except Exception as e:
+                    print(f"Failed to read CASTEP data as bytes: {e}", flush=True)
+
                 self.submit_btn.description = "Submitted Force Constants from CASTEP"
                 self.model.submitted = True
         else:
@@ -355,7 +342,6 @@ class DataInputWidget(ipw.VBox):
         """Keep the widget value synchronized with the selected radio button."""
         self.value = change["new"]
         self.model.data_type = self.value
-        print(f"Data input method changed to: {self.value}")
 
     def render(self) -> None:
         """Render the view's content."""

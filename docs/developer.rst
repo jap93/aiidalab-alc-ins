@@ -93,4 +93,3 @@ The HTML output is written to ``docs/_build/html``; open
 ``docs/_build/html/index.html`` in a browser. The heavy AiiDA and scientific
 dependencies are mocked in ``docs/conf.py``, so the full app stack is not
 needed to build the docs.
-

@@ -2,4 +2,3 @@ sphinx>=8.0.2
 piccolo-theme>=0.14.0
 sphinx-toolbox
 numpydoc
-

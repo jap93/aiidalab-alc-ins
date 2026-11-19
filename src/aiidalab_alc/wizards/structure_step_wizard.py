@@ -3,11 +3,14 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-import aiidalab_widgets_base as awb
-import ase
-import ase.io
-import ipywidgets as ipw
-from aiida.orm import SinglefileData, StructureData
+import aiidalab_widgets_base as awb  # type: ignore[reportMissingImports]
+import ase  # type: ignore[reportMissingImports]
+import ase.io  # type: ignore[reportMissingImports]
+import ipywidgets as ipw  # type: ignore[reportMissingImports]
+from aiida.orm import (  # type: ignore[reportMissingImports]
+    SinglefileData,
+    StructureData,
+)
 
 from aiidalab_alc.common.database import AiiDADatabaseWidget
 from aiidalab_alc.common.file_handling import FileUploadWidget
@@ -142,4 +145,3 @@ class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         else:
             self.model.submitted = False
         return
-

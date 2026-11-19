@@ -1,13 +1,13 @@
 # Use this for the latest official aiidalab image (Python 3.9)
-# FROM aiidalab/full-stack:latest 
-# Use this for a ported version of the above running on Python 3.10 
-FROM ghcr.io/aiidalab/full-stack:edge  
+# FROM aiidalab/full-stack:latest
+# Use this for a ported version of the above running on Python 3.10
+FROM ghcr.io/aiidalab/full-stack:edge
 
 USER root
- 
-# Install the alc-ux AiiDAlab plugin to the apps folder 
+
+# Install the alc-ux AiiDAlab plugin to the apps folder
 #RUN pip install git+https://github.com/stfc/alc-ux.git#egg=alc-ux --src ${HOME}/apps
-RUN echo ${PWD} 
+RUN echo ${PWD}
 
 #RUN pip install git+https://download.pytorch.org/whl/cpu
 COPY --chown=${NB_UID}:${NB_GID} . /home/jovyan/apps/aiidalab-alc-ins

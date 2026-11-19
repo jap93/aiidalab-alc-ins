@@ -62,4 +62,3 @@ directory):
    The MLIP workflow also writes ``force_constants.hdf5`` and
    ``bands.yml.xz`` to the working directory. The Phonopy export reads
    ``force_constants.hdf5``, so do not delete it before downloading.
-

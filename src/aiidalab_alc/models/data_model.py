@@ -49,4 +49,3 @@ class DataStepModel(tl.HasTraits):
             self.force_constants_file is not None
             or self.force_constants_data is not None
         )
-

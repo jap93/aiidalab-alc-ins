@@ -1,7 +1,7 @@
 """Defines the model and view components for the structure setup stage."""
 
-import aiidalab_widgets_base as awb
-import ipywidgets as ipw
+import aiidalab_widgets_base as awb  # type: ignore[import-not-found]
+import ipywidgets as ipw  # type: ignore[import-not-found]
 
 from aiidalab_alc.models.data_model import DataStepModel
 from aiidalab_alc.wizards.forceconstant_step_wizard import ForceConstantWizardStep
@@ -42,8 +42,7 @@ class DataWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         self.rendered = True
 
     def _update_view(self):
-
-        #if not self.model.process_uuid:
+        # if not self.model.process_uuid:
         #    self.children = [ipw.HTML("Waiting for calculation results...")]
         #    return
 
@@ -69,7 +68,10 @@ class DataWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         )
 
         accordion = ipw.Accordion(
-            children=[structure_panel, force_constants_panel, ],
+            children=[
+                structure_panel,
+                force_constants_panel,
+            ],
             selected_index=None,
         )
         accordion.set_title(0, "Structure")
@@ -78,5 +80,3 @@ class DataWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         self.children = [
             accordion,
         ]
-
-

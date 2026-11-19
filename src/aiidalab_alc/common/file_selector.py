@@ -1,10 +1,11 @@
+"""Widget for browsing to and selecting a file or directory path."""
 
 import html
 import os
 
 import traitlets as tl
+from ipywidgets import HTML, Button, Dropdown, HBox, Layout, Text, VBox
 
-from ipywidgets import HBox, VBox, Text, Layout, Dropdown, HTML, Button
 
 class FilenameSelector(VBox, tl.HasTraits):
     """
@@ -25,7 +26,9 @@ class FilenameSelector(VBox, tl.HasTraits):
     """
 
     filename = tl.Unicode("", help="The currently selected filename.")
-    selection_type = tl.Unicode("file", help="Whether the selected path is a file or directory.")
+    selection_type = tl.Unicode(
+        "file", help="Whether the selected path is a file or directory."
+    )
     directory = tl.Unicode("", help="The directory currently shown in the browser.")
 
     def __init__(
@@ -38,6 +41,8 @@ class FilenameSelector(VBox, tl.HasTraits):
         **kwargs,
     ):
         """
+        Initialise the file selector.
+
         Parameters
         ----------
         label : str
@@ -106,7 +111,13 @@ class FilenameSelector(VBox, tl.HasTraits):
             layout=Layout(align_items="center", gap="6px"),
         )
         entry_row = HBox(
-            [self._entries, self._refresh_btn, self._open_btn, self._select_btn, self._clear_btn],
+            [
+                self._entries,
+                self._refresh_btn,
+                self._open_btn,
+                self._select_btn,
+                self._clear_btn,
+            ],
             layout=Layout(align_items="center", gap="6px"),
         )
 
@@ -138,7 +149,10 @@ class FilenameSelector(VBox, tl.HasTraits):
 
     def _update_status(self, filename):
         if not filename:
-            self._status.value = "<span style='color:#888; font-size:0.85em;'>No filename entered.</span>"
+            self._status.value = (
+                "<span style='color:#888; font-size:0.85em;'>"
+                "No filename entered.</span>"
+            )
         else:
             kind = "Directory" if self.selection_type == "directory" else "File"
             escaped_filename = html.escape(filename)
@@ -153,9 +167,14 @@ class FilenameSelector(VBox, tl.HasTraits):
         self._sync_filename()
 
     def _on_refresh(self, _btn):
-        candidate = os.path.abspath(os.path.expanduser(self._directory_text.value.strip() or "."))
+        candidate = os.path.abspath(
+            os.path.expanduser(self._directory_text.value.strip() or ".")
+        )
         if not os.path.isdir(candidate):
-            self._status.value = "<span style='color:#b33; font-size:0.85em;'>Directory not found.</span>"
+            self._status.value = (
+                "<span style='color:#b33; font-size:0.85em;'>"
+                "Directory not found.</span>"
+            )
             return
         self.directory = candidate
         self._refresh_entries()
@@ -164,22 +183,26 @@ class FilenameSelector(VBox, tl.HasTraits):
         self._directory_text.value = self.directory
         try:
             entries = []
-            allowed_extensions = {
-                item.casefold() for item in self._extensions or []
-            }
+            allowed_extensions = {item.casefold() for item in self._extensions or []}
             with os.scandir(self.directory) as directory_entries:
                 for entry in directory_entries:
                     try:
                         is_directory = entry.is_dir()
                         if is_directory or entry.is_file():
                             extension = os.path.splitext(entry.name)[1].casefold()
-                            if not is_directory and allowed_extensions and extension not in allowed_extensions:
+                            if (
+                                not is_directory
+                                and allowed_extensions
+                                and extension not in allowed_extensions
+                            ):
                                 continue
                             prefix = "[Directory] " if is_directory else "[File] "
                             entries.append((prefix + entry.name, entry.path))
                     except OSError:
                         continue
-            entries.sort(key=lambda item: (not os.path.isdir(item[1]), item[0].casefold()))
+            entries.sort(
+                key=lambda item: (not os.path.isdir(item[1]), item[0].casefold())
+            )
             self._entries.options = [("Select a file or directory...", ""), *entries]
             self._entries.value = ""
         except OSError:
@@ -219,6 +242,7 @@ class FilenameSelector(VBox, tl.HasTraits):
 
 # ── Convenience factory ────────────────────────────────────────────────────────
 
+
 def create_filename_selector(
     label="Select filename:",
     placeholder="Enter filename...",
@@ -227,7 +251,7 @@ def create_filename_selector(
     directory=".",
 ):
     """
-    Factory function – returns a ready-to-display FilenameSelector widget.
+    Return a ready-to-display FilenameSelector widget.
 
     Parameters
     ----------
@@ -248,4 +272,3 @@ def create_filename_selector(
         default=default,
         directory=directory,
     )
-

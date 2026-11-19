@@ -54,4 +54,3 @@ cannot be imported, the **Submit** button is disabled and a warning is shown.
 
    Calculations are currently run in the notebook's kernel (not sent to the
    AiiDA daemon), so the notebook stays busy until the workflow finishes.
-

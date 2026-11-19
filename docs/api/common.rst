@@ -37,4 +37,3 @@ Vibrational modes viewer
 ------------------------
 
 .. automodule:: aiidalab_alc.common.vib_modes
-

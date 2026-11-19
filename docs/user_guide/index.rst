@@ -10,4 +10,3 @@ This guide describes each step of the application wizard in detail.
    workflow
    resources
    results
-

@@ -8,11 +8,11 @@ import tempfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import yaml
-from aiida import orm
-from aiida.common.exceptions import NotExistent
-from aiida.engine import run_get_node
-from aiida.orm import (
+import yaml  # pyright: ignore[reportMissingImports]
+from aiida import orm  # pyright: ignore[reportMissingImports]
+from aiida.common.exceptions import NotExistent  # pyright: ignore[reportMissingImports]
+from aiida.engine import run_get_node  # pyright: ignore[reportMissingImports]
+from aiida.orm import (  # pyright: ignore[reportMissingImports]
     Computer,
     Float,
     InstalledCode,

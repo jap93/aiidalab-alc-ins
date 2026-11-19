@@ -60,4 +60,3 @@ which format was submitted.
    ``ForceConstantsData`` node. If the file has no force constants, or no
    cell for the structure, a ``ValueError`` is raised with a description of
    what is missing.
-
