@@ -3,11 +3,6 @@ Common Widgets
 
 Reusable widgets shared across the wizard steps.
 
-File handling
--------------
-
-.. automodule:: aiidalab_alc.common.file_handling
-
 File selector
 -------------
 

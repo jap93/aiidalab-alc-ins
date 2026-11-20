@@ -21,6 +21,7 @@ RUN pip install git+https://github.com/stfc/aiida-mlip-phonon2.git@bands-mods --
 RUN pip install mace-torch --no-cache-dir --no-user
 RUN pip install aiida-alc-ins --no-cache-dir --no-user
 RUN pip install aiida-workgraph --no-cache-dir --no-user
+RUN pip install alc_aiidalab_widgets --no-cache-dir --no-user
 RUN pip install dftd3 --no-cache-dir --no-user
 RUN pip install logger --no-cache-dir --no-user
 

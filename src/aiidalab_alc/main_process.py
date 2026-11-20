@@ -80,10 +80,6 @@ class MainAppModel(tl.HasTraits):
                     return
 
         sys.stdout = self.original
-        print(
-            "I have finished submitting the process. "
-            "You can now view the results in the Results tab."
-        )
 
     def _calculating(self) -> None:
         """Update the UI to indicate that the calculation is in progress."""

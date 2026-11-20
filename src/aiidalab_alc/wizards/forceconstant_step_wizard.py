@@ -12,9 +12,9 @@ import traitlets as tl
 import yaml
 from aiida.orm import SinglefileData, StructureData
 from aiida_alc_ins.data import ForceConstantsData
+from alc_aiidalab_widgets.widgets import FileUploadWidget
 from euphonic import ForceConstants
 
-from aiidalab_alc.common.file_handling import FileUploadWidget
 from aiidalab_alc.models.data_model import DataStepModel
 
 

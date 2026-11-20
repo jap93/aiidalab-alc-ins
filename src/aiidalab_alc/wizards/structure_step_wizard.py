@@ -11,9 +11,9 @@ from aiida.orm import (  # type: ignore[reportMissingImports]
     SinglefileData,
     StructureData,
 )
+from alc_aiidalab_widgets.widgets import FileUploadWidget
 
 from aiidalab_alc.common.database import AiiDADatabaseWidget
-from aiidalab_alc.common.file_handling import FileUploadWidget
 from aiidalab_alc.models.data_model import DataStepModel
 
 
