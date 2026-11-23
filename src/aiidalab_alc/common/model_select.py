@@ -5,6 +5,7 @@ from typing import Generic, TypeVar
 
 import ipywidgets as ipw
 from aiida.orm import Node, QueryBuilder, SinglefileData
+
 from alc_aiidalab_widgets.utils import tab_from_dict
 from alc_aiidalab_widgets.widgets import AiiDADatabaseQueryWidget, FileUploadWidget
 from alc_aiidalab_widgets.widgets.parameters import ParamEntry, ParametersBlock

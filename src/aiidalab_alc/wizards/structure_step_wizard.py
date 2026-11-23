@@ -13,7 +13,7 @@ from aiida.orm import (  # type: ignore[reportMissingImports]
 )
 from alc_aiidalab_widgets.widgets import FileUploadWidget
 
-from aiidalab_alc.common.database import AiiDADatabaseWidget
+from alc_aiidalab_widgets.widgets import AiiDADatabaseQueryWidget
 from aiidalab_alc.models.data_model import DataStepModel
 
 
@@ -52,7 +52,7 @@ class StructureWizardStep(ipw.VBox, awb.WizardAppWidgetStep):
         ipw.dlink((self.file_uploader, "file"), (self.model, "structure_file"))
 
         # AiiDA database
-        self.database_widget = AiiDADatabaseWidget(
+        self.database_widget = AiiDADatabaseQueryWidget(
             title="AiiDA Database",
             query=[
                 SinglefileData,
