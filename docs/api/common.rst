@@ -3,16 +3,6 @@ Common Widgets
 
 Reusable widgets shared across the wizard steps.
 
-File selector
--------------
-
-.. automodule:: aiidalab_alc.common.file_selector
-
-AiiDA database browser
-----------------------
-
-.. automodule:: aiidalab_alc.common.database
-
 Model selection
 ---------------
 

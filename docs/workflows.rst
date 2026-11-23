@@ -19,7 +19,7 @@ then picks a workflow based on the ``data_type`` set in the data input step:
      - :class:`~aiidalab_alc.ins_process.INSProcess`
 
 When the process has finished, its outputs are stored on the
-:class:`~aiidalab_alc.results.ResultsModel` and the **Results** step is
+:class:`~aiidalab_alc.models.results_model.ResultsModel` and the **Results** step is
 unlocked.
 
 .. code-block:: text

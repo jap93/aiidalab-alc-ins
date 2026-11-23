@@ -58,6 +58,8 @@ Project layout
    │   ├── mlip_process.py     # MLIP + phonon WorkGraph
    │   ├── ins_process.py      # Euphonic INS work chains
    │   ├── utils.py            # Helper functions
+   │   ├── models/             # traitlets models (no view imports)
+   │   ├── wizards/            # Per-mode wizard step views
    │   └── common/             # Reusable widgets
    └── tests/data/             # Example input files
 
@@ -67,16 +69,19 @@ Architecture
 The app follows a model–view pattern:
 
 * **Models** are ``traitlets.HasTraits`` classes
-  (:class:`~aiidalab_alc.data.DataStepModel`,
-  :class:`~aiidalab_alc.workflow.WorkflowCalculationModel`,
-  :class:`~aiidalab_alc.resources.ComputationalResourcesModel`,
-  :class:`~aiidalab_alc.results.ResultsModel`). They are owned by
+  (:class:`~aiidalab_alc.models.data_model.DataStepModel`,
+  :class:`~aiidalab_alc.models.workflow_model.WorkflowCalculationModel`,
+  :class:`~aiidalab_alc.models.resources_model.ComputationalResourcesModel`,
+  :class:`~aiidalab_alc.models.results_model.ResultsModel`). They are owned by
   :class:`~aiidalab_alc.main_process.MainAppModel`.
 * **Views** are ``ipywidgets`` containers that also inherit from
   ``aiidalab_widgets_base.WizardAppWidgetStep``. Widget values are kept in
   sync with model traits using ``traitlets.link`` / ``ipywidgets.dlink``.
 * Each view builds its widgets lazily in ``render()``, which is called when
   its wizard step is opened.
+* Model modules in ``models/`` must not import view code; views in the
+  step modules and ``wizards/`` import models, not the other way round.
+* File uploads use ``FileUploadWidget`` from ``alc_aiidalab_widgets``.
 
 Building the documentation
 --------------------------

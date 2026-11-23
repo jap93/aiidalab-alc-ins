@@ -48,8 +48,9 @@ constants you have already calculated. Choose the **Input Method**:
    meet these requirements.
 
 ``castep``
-   Browse to a CASTEP ``.castep_bin`` file on the server's file system. The
-   force constants and crystal structure are read with Euphonic.
+   Upload a CASTEP ``.castep_bin`` file using the same upload box. The
+   force constants are read with Euphonic and the crystal structure is
+   taken from them.
 
 Click **Submit Force Constants** to confirm. The button label changes to show
 which format was submitted.

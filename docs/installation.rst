@@ -12,6 +12,7 @@ Requirements
 * The following AiiDA plugins and libraries:
 
   * ``aiida-core`` and ``aiidalab-widgets-base``
+  * ``alc-aiidalab-widgets`` (shared widgets such as ``FileUploadWidget``)
   * `aiida-mlip <https://github.com/stfc/aiida-mlip>`_ (MLIP / phonon
     calculations; installed via ``aiida-mlip-phonon``)
   * `aiida-alc-ins <https://github.com/stfc/aiida-alc-ins>`_

@@ -16,6 +16,11 @@ aiidalab_alc.main_process
 
 .. automodule:: aiidalab_alc.main_process
 
+aiidalab_alc.history
+--------------------
+
+.. automodule:: aiidalab_alc.history
+
 aiidalab_alc.utils
 ------------------
 

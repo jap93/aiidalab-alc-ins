@@ -39,12 +39,12 @@ MLIP Parameters
      - 0.001
      - Force convergence criterion (``fmax``) for the optimisation.
        Disabled for single points.
-   * - Architecture
+   * - MLIP model
      - mace
-     - The MLIP architecture.
-   * - Model filename
-     - ``mace_mp_small.model``
-     - Path to the MLIP model file on the server. Required.
+     - Chosen with the model selector. Its tabs are **From URI** (with
+       presets), **From Local File** and **AiiDA Database**. The **Arch**
+       dropdown sets the architecture. The URI box sets the model used by
+       the workflow. Only the **From URI** tab currently feeds the workflow.
 
 Phonon Parameters
 ^^^^^^^^^^^^^^^^^
