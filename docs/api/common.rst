@@ -3,10 +3,10 @@ Common Widgets
 
 Reusable widgets shared across the wizard steps.
 
-Model selection
----------------
+File selector
+-------------
 
-.. automodule:: aiidalab_alc.common.model_select
+.. automodule:: aiidalab_alc.common.file_selector
 
 Navigation
 ----------

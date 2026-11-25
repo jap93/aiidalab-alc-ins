@@ -92,7 +92,7 @@ class MLIPProcess:
         model_file = self.workflow_model.force_field
         if not Path(model_file).exists():
             logger.info("model file does not exist: %s", model_file)
-            print("model file does not exist", model_file)
+            return None
 
         architecture = self.workflow_model.architecture
         mlip_model = ModelData.from_local(model_file, architecture=architecture)

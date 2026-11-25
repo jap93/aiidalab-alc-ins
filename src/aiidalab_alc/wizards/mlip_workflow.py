@@ -6,7 +6,7 @@ import aiidalab_widgets_base as awb  # type: ignore[import-not-found]
 import ipywidgets as ipw  # type: ignore[import-not-found]
 import traitlets as tl  # type: ignore[import-not-found]
 
-from aiidalab_alc.common.model_select import ModelSelect
+from aiidalab_alc.common.file_selector import create_filename_selector
 from aiidalab_alc.models.workflow_model import WorkflowCalculationModel
 
 DFTD3_AVAILABLE = find_spec("dftd3") is not None
@@ -161,10 +161,20 @@ class MLIPOptionsWidget(ipw.VBox):
             layout={"width": "50%"},
         )
 
-        # Model selector: choose the MLIP model (path or URI) and architecture
-        self.ff_file = ModelSelect()
-        self.ff_file.model_from_uri.value = self.model.force_field or ""
-        self.ff_file.model_from_uri.observe(self.on_filename_change, names="value")
+        self.arch_dropdown = ipw.Dropdown(
+            options=["mace"],
+            description="Architecture:",
+            disabled=False,
+            layout={"width": "50%"},
+        )
+
+        self.ff_file = create_filename_selector(
+            label="Model filename:",
+            placeholder="mace_mp_small.model",
+            default="mace_mp_small.model",
+        )
+
+        self.ff_file.observe(self.on_filename_change, names="filename")
 
         self.children = [
             self.calculation_dropdown,
@@ -172,12 +182,13 @@ class MLIPOptionsWidget(ipw.VBox):
             self.enable_dftd3_chk,
             self.pressure_text,
             self.max_force_text,
+            self.arch_dropdown,
             self.ff_file,
         ]
 
         tl.link((self.calculation_dropdown, "value"), (self.model, "calc_style"))
         tl.link((self.optimisation_dropdown, "value"), (self.model, "optimisation"))
-        tl.link((self.ff_file.arch, "value"), (self.model, "architecture"))
+        tl.link((self.arch_dropdown, "value"), (self.model, "architecture"))
         tl.link((self.enable_dftd3_chk, "value"), (self.model, "use_dftd3"))
         tl.link((self.pressure_text, "value"), (self.model, "pressure"))
         tl.link((self.max_force_text, "value"), (self.model, "maximum_force"))
@@ -187,8 +198,8 @@ class MLIPOptionsWidget(ipw.VBox):
         return
 
     def on_filename_change(self, change):
-        """Update the model's force field when the selected model changes."""
-        self.model.force_field = change["new"]
+        """Update the model's force field when the selected file changes."""
+        self.model.force_field = self.ff_file.value
 
     # def _enable_dftd3_options(self, _) -> None:
     #    self.pressure_text.disabled = not self.enable_dftd3_chk.value
@@ -220,8 +231,7 @@ class MLIPOptionsWidget(ipw.VBox):
         for child in self.children:
             if hasattr(child, "disabled"):
                 child.disabled = val
-        self.ff_file.arch.disabled = val
-        self.ff_file.model_from_uri.disabled = val
+        # self.ff_file.disable(val)
         return
 
 
