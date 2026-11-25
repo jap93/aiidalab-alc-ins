@@ -4,7 +4,7 @@ import html
 import os
 
 import traitlets as tl
-from ipywidgets import HTML, Button, Dropdown, HBox, Layout, Text, VBox
+from ipywidgets import HTML, Button, HBox, Layout, Select, Text, VBox
 
 
 class FilenameSelector(VBox, tl.HasTraits):
@@ -69,15 +69,20 @@ class FilenameSelector(VBox, tl.HasTraits):
         self._status = HTML(value="")
 
         self._directory_text = Text(
+            continuous_update=False,
             value=initial_directory,
             layout=Layout(width="320px"),
             style={"description_width": "0px"},
         )
-        self._entries = Dropdown(
-            options=[("Select a file or directory...", "")],
-            layout=Layout(width="320px"),
+        # Clickable listing: clicking a directory opens it, clicking a file
+        # selects it.
+        self._entries = Select(
+            options=[],
+            rows=10,
+            layout=Layout(width="400px"),
             style={"description_width": "0px"},
         )
+        self._suppress_entry_events = False
         self._up_btn = Button(
             description="Up",
             icon="level-up",
@@ -90,17 +95,11 @@ class FilenameSelector(VBox, tl.HasTraits):
             layout=Layout(width="90px"),
             tooltip="Refresh files and directories",
         )
-        self._open_btn = Button(
-            description="Open",
-            icon="folder-open",
-            layout=Layout(width="80px"),
-            tooltip="Open the selected directory",
-        )
         self._select_btn = Button(
             description="Select",
             icon="check",
             layout=Layout(width="80px"),
-            tooltip="Select the chosen file or directory",
+            tooltip="Select the current directory",
         )
         self._clear_btn = Button(
             description="Clear",
@@ -110,30 +109,28 @@ class FilenameSelector(VBox, tl.HasTraits):
             tooltip="Clear the filename",
         )
         browser = HBox(
-            [self._directory_text, self._up_btn],
+            [self._directory_text, self._up_btn, self._refresh_btn],
             layout=Layout(align_items="center", gap="6px"),
         )
         entry_row = HBox(
-            [
-                self._entries,
-                self._refresh_btn,
-                self._open_btn,
-                self._select_btn,
-                self._clear_btn,
-            ],
+            [self._select_btn, self._clear_btn],
             layout=Layout(align_items="center", gap="6px"),
         )
 
         self._up_btn.on_click(self._on_up)
         self._refresh_btn.on_click(self._on_refresh)
-        self._open_btn.on_click(self._on_open_directory)
         self._select_btn.on_click(self._on_select_entry)
 
         self._clear_btn.on_click(self._on_clear)
 
         # ── Assemble layout ───────────────────────────────────────────────
+        self._entries.observe(self._on_entry_click, names="value")
+        self._directory_text.observe(
+            lambda _change: self._on_refresh(None), names="value"
+        )
+
         super().__init__(
-            children=[browser, entry_row, self._status],
+            children=[browser, self._entries, entry_row, self._status],
             layout=Layout(padding="10px", width="auto"),
             **kwargs,
         )
@@ -183,6 +180,7 @@ class FilenameSelector(VBox, tl.HasTraits):
         self._refresh_entries()
 
     def _refresh_entries(self):
+        self._suppress_entry_events = True
         self._directory_text.value = self.directory
         try:
             entries = []
@@ -199,36 +197,46 @@ class FilenameSelector(VBox, tl.HasTraits):
                                 and extension not in allowed_extensions
                             ):
                                 continue
-                            prefix = "[Directory] " if is_directory else "[File] "
+                            prefix = "\U0001f4c1 " if is_directory else "\U0001f4c4 "
                             entries.append((prefix + entry.name, entry.path))
                     except OSError:
                         continue
             entries.sort(
                 key=lambda item: (not os.path.isdir(item[1]), item[0].casefold())
             )
-            self._entries.options = [("Select a file or directory...", ""), *entries]
-            self._entries.value = ""
+            parent = os.path.dirname(self.directory)
+            up = [("\u2b06 ..", parent)] if parent != self.directory else []
+            self._entries.options = [*up, *entries]
+            self._entries.value = None
         except OSError:
             self._entries.options = [("Unable to read this directory", "")]
+        finally:
+            self._suppress_entry_events = False
+
+    def _on_entry_click(self, change):
+        """Open a clicked directory, or select a clicked file."""
+        if self._suppress_entry_events:
+            return
+        selected = change["new"]
+        if not selected:
+            return
+        if os.path.isdir(selected):
+            self.directory = os.path.abspath(selected)
+            self._refresh_entries()
+        else:
+            self.selection_type = "file"
+            self._selected_path = selected
+            self._sync_filename()
 
     def _on_up(self, _btn):
         parent = os.path.dirname(os.path.abspath(self.directory))
         self.directory = parent
         self._refresh_entries()
 
-    def _on_open_directory(self, _btn):
-        selected = self._entries.value
-        if selected and os.path.isdir(selected):
-            self.directory = os.path.abspath(selected)
-            self._refresh_entries()
-
     def _on_select_entry(self, _btn):
-        selected = self._entries.value
-        if not selected:
-            return
-        is_directory = os.path.isdir(selected)
-        self.selection_type = "directory" if is_directory else "file"
-        self._selected_path = selected
+        """Select the directory currently being shown."""
+        self.selection_type = "directory"
+        self._selected_path = self.directory
         self._sync_filename()
 
     # ── Public API ────────────────────────────────────────────────────────
